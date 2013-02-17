@@ -33,7 +33,7 @@
 
 
 // res_tga.c
-
+#include <iostream>
 #include "interfaces.h"
 #include "g_shared.h"
 
@@ -74,7 +74,7 @@ res_tga_cache_t * Res_CacheInTGA( /*char *path*/ res_tga_register_t *reg )
 {
 	ib_file_t	*h;
 	int		filesize;
-	char		*buf;
+//	char		*buf;
 
 	char   ident_len;
 	char   cmap_type;
@@ -96,6 +96,13 @@ res_tga_cache_t * Res_CacheInTGA( /*char *path*/ res_tga_register_t *reg )
 	res_tga_cache_t		*tga;
 	int		pixels;
 
+    ibase::file_handle ibh( reg->path );
+    
+    ibase::file_handle::mapping map(ibh);
+    
+    const char *buf = map.ptr();
+    
+#if 0
 	h = IB_Open( reg->path );
 	if ( !h )
 		__error( "load of '%s' failed\n", reg->path );
@@ -109,7 +116,7 @@ res_tga_cache_t * Res_CacheInTGA( /*char *path*/ res_tga_register_t *reg )
 
 	IB_Read( buf, filesize, 1, h );
 	IB_Close( h );
-
+#endif
 	
 	//
 	// interpret buffer as tga

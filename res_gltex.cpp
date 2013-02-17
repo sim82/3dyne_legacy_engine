@@ -35,7 +35,7 @@
 // res_gltex.c
 
 
-
+#include <iostream>
 #include "interfaces.h"
 #include "g_shared.h"
 

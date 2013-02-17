@@ -36,8 +36,214 @@
 
 #ifndef __g_resources
 #define __g_resources
+#include <stdexcept>
+#include <cassert>
+#include <map>
+#include <string>
+#include <vector>
+
+#include <boost/intrusive/list.hpp>
 
 #include "g_resourcesdefs.h"
+
+namespace g_res {
+
+namespace tag {
+    class gltex;
+    class sound;
+}
+
+namespace resource {
+class base : public boost::intrusive::list_base_hook<> {
+public:
+    virtual size_t type_id() const = 0;
+private:
+    
+};
+
+class gltex : public base {
+    virtual size_t type_id() const ;
+};
+
+class sound : public base {
+    virtual size_t type_id() const ;
+};
+
+
+}
+
+
+
+template<typename tag>
+class traits {
+    
+};
+
+template<>
+class traits<tag::gltex> {
+public:
+    typedef resource::gltex type;
+    const static size_t id = 1;
+    const static char *name;// = "gltex";
+};
+
+template<>
+class traits<tag::sound> {
+public:
+    typedef resource::sound type;
+    const static size_t id = 2;
+    const static char *name;// = "sound";
+};
+
+
+
+namespace loader {
+class base {
+public:
+    virtual resource::base *make( hobj_t *obj ) = 0;
+    virtual void unmake( resource::base * ) = 0;
+    virtual void cache( resource::base * ) = 0;
+    virtual void uncache( resource::base * ) = 0;
+    
+    
+};
+
+
+
+}
+
+
+class manager {
+    typedef std::map<std::string, resource::base *> res_map;    
+public:
+    
+    class scope {
+    public:
+    
+        scope() : mgr_(0) {}
+        
+        scope( manager *mgr ) : mgr_(mgr) {
+            mgr_->push_scope(this);
+            
+        } 
+        
+        ~scope();
+    private:
+        void swap( scope &other ) {
+            std::swap( mgr_, other.mgr_ );
+            list_.swap( other.list_ );
+            
+        }
+        
+        void add( resource::base *res ) {
+            if( !res->is_linked() ) {
+                list_.push_back( *res );
+            }
+        }
+        
+        friend class manager;
+        
+        manager *mgr_;
+        boost::intrusive::list<resource::base> list_;
+    };
+    
+    
+    manager() {
+        scope bs( this );
+        base_scope.swap( bs );
+        
+    }
+    
+    
+    manager &get_instance() {
+        static manager mgr;
+        
+        return mgr;
+    }
+    
+    void init_from_res_obj( hobj_t *hobj ) ;
+    void init_from_res_file( const char *filename ) ;
+    
+    
+    template<typename TAG>
+    void add_loader( loader::base *loader ) {
+        if( loader_.size() <= traits<TAG>::id ) {
+            loader_.resize( traits<TAG>::id + 1 );
+            loader_names_.resize( traits<TAG>::id + 1 );
+        }
+        
+        assert( loader_[traits<TAG>::id] == 0 );
+        loader_[traits<TAG>::id] = loader;
+        loader_names_[traits<TAG>::id] = traits<TAG>::name;
+    }
+    
+    inline size_t loader_id( const char *type ) {
+        for( size_t i = 0; i < loader_names_.size(); ++i ) {
+            if( !loader_names_[i].empty() && loader_names_[i] == type ) {
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+    
+    resource::base *get_unsafe( const char *name ) {
+        res_map::iterator it = res_.find( std::string( name ) );
+        
+        if( it == res_.end() ) {
+            throw std::runtime_error( "resource not found" );
+        }
+        resource::base *res = it->second;
+        loader_[res->type_id()]->cache( res );
+        
+        return res;
+        
+    }
+    
+    template<typename TAG> 
+    typename traits<TAG>::type *get( const char * name ) {
+        resource::base *res = get_unsafe( name );
+        if( res->type_id() == traits<TAG>::id ) {
+            return static_cast<typename traits<TAG>::type *>(res);
+        } else {
+            throw std::runtime_error( "wrong res type" );
+        }
+    }
+    
+    void uncache( resource::base *res ) {
+        loader_[res->type_id()]->uncache( res );
+    }
+    
+    void push_scope( scope *s ) {
+        scope_stack_.push_back(s);
+    }
+    
+    scope *pop_scope() {
+        scope *s = scope_stack_.back();
+        scope_stack_.pop_back();
+        
+        return s;
+    }
+    
+private:
+    manager( const manager & ) {}
+    manager &operator=( const manager & ) { return *this; }
+    
+    res_map res_;
+    std::vector<loader::base *> loader_;
+    std::vector<std::string> loader_names_;
+    
+    
+    std::vector<scope *>scope_stack_;
+    scope base_scope;
+    
+    
+};
+
+
+
+}
+
 
 g_resources_t * G_NewResources( void );
 void G_FreeResources( g_resources_t *res );

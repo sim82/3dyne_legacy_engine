@@ -241,52 +241,7 @@ void G_ResourceFromResObj( g_resources_t *res, hobj_t *cls )
 
 //	printf( "res: %s ", cls->name );
 	
-	if ( strcmp( cls->type, "resource" ) )
-	{
-		printf( "Warning: G_ResourceFromClass, class is not of type 'resource', ignore\n" );
-		return;
-	}
-
-	rt = (g_res_type_t*) U_MapSearch( res->type_map, cls->name );
-
-	if ( !rt )
-	{
-		printf( "Warning: G_ResourceFromClass, type '%s' of resource is not registered, ignore\n", cls->name );
-		return;
-	}
-
-	name = FindHPair( cls, "name" );
-	if ( !name )
-	{
-		printf( "Warning: G_ResourceFromClass, missing key 'name', ignore\n" );
-		return;
-    	}
-//	printf( "%s\n", name->value );
 	
-	if ( U_MapSearch( res->res_map, name->value ) )
-	{
-		printf( "Warning: G_ResourceFromClass, there is already a resource with the same name, ignore\n" );
-		return;
-	}
-
-	if ( !rt->register_func )
-	{
-		printf( "Warning: G_ResourceFromClass, type '%s' has no register_func, ignore\n", cls->name );
-		return;
-	}
-
-	r = rt->register_func( cls );
-
-	if ( !r )
-	{
-		printf( "Warning: G_ResourceFromClass, register_func failed, ignore\n" );
-		return;
-	}
-
-	if ( !U_MapInsert( res->res_map, r ) )
-	{
-		printf( "Warning: G_ResourceFromClass, failed\n" );
-	}
 
 }
 
@@ -652,4 +607,97 @@ void G_ResourcesForEach( g_resources_t *res, void (*action_func)(g_resource_t *r
 {
 	resources_for_each_func = action_func;
 	U_MapForEach( res->res_map, ResourcesForEachFunc );
+}
+
+namespace g_res
+{
+const char *traits<tag::gltex>::name = "gltext";
+const char *traits<tag::sound>::name = "sound";
+
+namespace resource
+{
+    size_t gltex::type_id() const
+    {
+        return traits<tag::gltex>::id;
+    }
+    
+    size_t sound::type_id() const
+    {
+        return traits<tag::gltex>::id;
+    }
+
+} // namespace resource
+
+
+void manager::init_from_res_obj ( hobj_t* hobj )
+{
+    if ( strcmp ( hobj->type, "resource" ) ) {
+        printf ( "Warning: G_ResourceFromClass, class is not of type 'resource', ignore\n" );
+        return;
+    }
+
+    size_t lid = loader_id ( hobj->name );
+    assert ( lid != size_t ( -1 ) );
+
+
+    hpair_t *name = FindHPair ( hobj, "name" );
+    if ( !name ) {
+        printf ( "Warning: G_ResourceFromClass, missing key 'name', ignore\n" );
+        return;
+    }
+    //  printf( "%s\n", name->value );
+
+    res_map::iterator it = res_.find ( name->value );
+
+
+    if ( it != res_.end() ) {
+        printf ( "Warning: G_ResourceFromClass, there is already a resource with the same name, ignore\n" );
+        return;
+    }
+
+    resource::base *r = loader_[lid]->make ( hobj );
+
+    res_.insert ( std::make_pair ( std::string ( name->value ), r ) );
+
+}
+void manager::init_from_res_file ( const char* name )
+{
+    tokenstream_t   *ts;
+    hobj_t      *root;
+    hobj_t      *resobj;
+    hobj_search_iterator_t  iter;
+
+    printf ( "G_ResourceFromClass: %s\n", name );
+
+    ts = BeginTokenStream ( name );
+    if ( !ts ) {
+        __error ( "can't open resource class '%s'\n", name );
+    }
+
+    root = ReadClass ( ts );
+    EndTokenStream ( ts );
+
+    InitClassSearchIterator ( &iter, root, "resource" );
+    for ( ; ( resobj = ( SearchGetNextClass ( &iter ) ) ) ; ) {
+        init_from_res_obj ( resobj );
+    }
+}
+
+manager::scope::~scope()
+{
+    if( mgr_ == 0 ) {
+        return;
+    }
+        
+    
+    while ( !list_.empty() ) {
+       
+        mgr_->uncache ( &list_.front() );
+        list_.pop_front();
+
+    }
+    scope *s = mgr_->pop_scope();
+    
+    assert( s == this );
+}
 }

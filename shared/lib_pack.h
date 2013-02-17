@@ -40,7 +40,7 @@
 
 void U_BeginPack( int mode, void *ptr, int maxsize );
 int U_EndPack( void );	// returns actually packed bytes
-void U_BeginUnpack( int mode, void *ptr, int size );
+void U_BeginUnpack( int mode, const void* ptr, int size );
 int U_EndUnpack( void ); // returns actually unpacked bytes
 
 void U_Packs8( char );

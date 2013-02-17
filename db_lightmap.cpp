@@ -119,7 +119,6 @@ void LightmapDB_Init( db_lightmap_t *db )
 }
 #endif
 
-void bake_hobj( hobj_t *o );
 
 lightmap_db_cpp::lightmap_db_cpp( const char* lightmap_bin_name, const char* lightmap_class_name, const char* source_class_name ) 
 : lm_bin_handle_(lightmap_bin_name),

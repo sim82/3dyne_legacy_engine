@@ -44,13 +44,18 @@
 #include "shock.h"
 #include "lib_pack.h"
 
+static int  cur_maxsize;
+static int  cur_size;
+
+static int  packedmode;
+static char u_token[255];
+
+
+// deactivated, because it is not used and i wanted to make sure not to mix up usege of cur_start and cur_start_up
+#if 0 
+
 static char	*cur_start;
 static char	*cur_pos;
-static int	cur_maxsize;
-static int	cur_size;
-
-static int	packedmode;
-static char	u_token[255];
 
 
 /*
@@ -59,7 +64,7 @@ static char	u_token[255];
 
   ====================
 */
-void U_BeginPack( int mode, void *ptr, int maxsize )
+void U_BeginPack( int mode, const void *ptr, int maxsize )
 {
 	cur_start = ( char * ) ptr;
 	cur_pos = cur_start;
@@ -231,14 +236,18 @@ void U_PackString( char *string, int size )
 
   ====================
 */
-
+#endif
 /*
   ====================
   U_BeginUnPack
 
   ====================
 */
-void U_BeginUnpack( int mode, void *ptr, int size )
+static const char *cur_start_unpack;
+static const char *cur_pos_unpack;
+
+
+void U_BeginUnpack( int mode, const void *ptr, int size )
 {
 	if( mode & U_PACKED_ASC )
 		packedmode = U_PACKED_ASC;
@@ -246,8 +255,8 @@ void U_BeginUnpack( int mode, void *ptr, int size )
 	if( mode & U_PACKED_BIN )
 		packedmode = U_PACKED_BIN;
 	
-	cur_start = ( char * ) ptr;
-	cur_pos = cur_start;
+	cur_start_unpack = ( const char * ) ptr;
+	cur_pos_unpack = cur_start_unpack;
 
 	cur_maxsize = size;
 	cur_size = 0;
@@ -270,7 +279,7 @@ void U_UnpackToken()
 	//u_token = NULL;
 
 
-	if( !cur_pos )
+	if( !cur_pos_unpack )
 	{
 		u_token[0] = 0;
 		return;
@@ -278,15 +287,15 @@ void U_UnpackToken()
 
 	for( ;; )
 	{
-		c = *(cur_pos);
-		cur_pos++;
+		c = *(cur_pos_unpack);
+		cur_pos_unpack++;
 		cur_size++;
 			
 
 		if( c == '\"' )
 		{
 			quota = 1;
-			c = *(cur_pos++);
+			c = *(cur_pos_unpack++);
 			cur_size++;
 			break;
 		}
@@ -324,7 +333,7 @@ void U_UnpackToken()
 		u_token[pos] = ( char )c;
 		
 		pos++;
-		c = *(cur_pos++);
+		c = *(cur_pos_unpack++);
 		cur_size++;
 	}
 	if( pos > 255 )  // double save
@@ -349,8 +358,8 @@ void U_Unpacks8( char *s8 )
 	switch( packedmode )
 	{
 	case U_PACKED_BIN:
-		*s8 = *cur_pos;
-		cur_pos++;
+		*s8 = *cur_pos_unpack;
+		cur_pos_unpack++;
 		cur_size++;
 		break;
 
@@ -370,10 +379,10 @@ void U_Unpacks16( short *s16 )
 	switch( packedmode )
 	{
 	case U_PACKED_BIN:
-		memcpy( s16, cur_pos, 2 );
+		memcpy( s16, cur_pos_unpack, 2 );
 		
 		*s16 = SHORT( *s16 );
-		cur_pos+=2;
+		cur_pos_unpack+=2;
 		cur_size+=2;
 		break;
 
@@ -393,10 +402,10 @@ void U_Unpacks32( int *s32 )
 	switch( packedmode )
 	{
 	case U_PACKED_BIN:
-		memcpy( s32, cur_pos, 4 );
+		memcpy( s32, cur_pos_unpack, 4 );
 		
 		*s32 = INT( *s32 );
-		cur_pos+=4;
+		cur_pos_unpack+=4;
 		cur_size+=4;
 		break;
 
@@ -418,10 +427,10 @@ void U_Unpackfp32( float *fp32 )
 	switch( packedmode )
 	{
 	case U_PACKED_BIN:
-		memcpy( fp32, cur_pos, 4 );
+		memcpy( fp32, cur_pos_unpack, 4 );
 
 		*fp32 = FLOAT32( *fp32 );
-		cur_pos+=4;
+		cur_pos_unpack+=4;
 		cur_size+=4;
 		break;
 	
@@ -438,9 +447,9 @@ void U_Unpackfp32( float *fp32 )
 
 void U_UnpackString( char *dest, int size )
 {
-	memcpy( dest, cur_pos, size );
+	memcpy( dest, cur_pos_unpack, size );
 	
-	cur_pos += size;
+	cur_pos_unpack += size;
 	cur_size += size;
 }
 
@@ -452,12 +461,12 @@ void U_UnpackntString( char *dest, int maxsize )
 		{
 			
 		}
-		*dest = *cur_pos;
-		cur_pos++;
+		*dest = *cur_pos_unpack;
+		cur_pos_unpack++;
 		dest++;
 		cur_size++;
 
-		if ( *(cur_pos-1) == 0 )
+		if ( *(cur_pos_unpack-1) == 0 )
 			break;
 		
 	}
@@ -470,6 +479,6 @@ void U_UnpackSkip( int space )
 		__warning( "running out of input buffer\n" );
 	}
 
-	cur_pos += space;
+	cur_pos_unpack += space;
 	cur_size += space;
 }
