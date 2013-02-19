@@ -45,18 +45,20 @@
 #include <boost/intrusive/list.hpp>
 
 #include "g_resourcesdefs.h"
-
+#include "shock.h"
 namespace g_res {
 
 namespace tag {
     class gltex;
     class sound;
+    class lump;
 }
 
 namespace resource {
 class base : public boost::intrusive::list_base_hook<> {
 public:
     virtual size_t type_id() const = 0;
+    virtual ~base() {}
 private:
     
 };
@@ -69,6 +71,9 @@ class sound : public base {
     virtual size_t type_id() const ;
 };
 
+class lump : public base {
+    virtual size_t type_id() const ;
+};
 
 }
 
@@ -95,6 +100,13 @@ public:
     const static char *name;// = "sound";
 };
 
+template<>
+class traits<tag::lump> {
+public:
+    typedef resource::lump type;
+    const static size_t id = 3;
+    const static char *name;// = "sound";
+};
 
 
 namespace loader {
@@ -108,8 +120,47 @@ public:
     
 };
 
+class gltex : public base {
+public:
+    virtual resource::base *make( hobj_t *obj ) {
+        return new resource::gltex();
+    }
+    virtual void unmake( resource::base * ) {
+    }
+    virtual void cache( resource::base * ) {
+        __named_message( "\n" );
+    }
+    virtual void uncache( resource::base * ) {
+    }
+};
 
+class sound : public base {
+public:
+    virtual resource::base *make( hobj_t *obj ) {
+        return new resource::sound();
+    }
+    virtual void unmake( resource::base * ) {
+    }
+    virtual void cache( resource::base * ) {
+        __named_message( "\n" );
+    }
+    virtual void uncache( resource::base * ) {
+    }
+};
 
+class lump : public base {
+public:
+    virtual resource::base *make( hobj_t *obj ) {
+        return new resource::lump();
+    }
+    virtual void unmake( resource::base * ) {
+    }
+    virtual void cache( resource::base * ) {
+        __named_message( "\n" );
+    }
+    virtual void uncache( resource::base * ) {
+    }
+};
 }
 
 
@@ -148,15 +199,11 @@ public:
         }
     }
     
-    manager &get_instance() {
-        static manager mgr;
-        
-        return mgr;
-    }
+    
     
     void init_from_res_obj( hobj_t *hobj ) ;
     void init_from_res_file( const char *filename ) ;
-    
+    void dump_scopes() ;
     
     template<typename TAG>
     void add_loader( loader::base *loader ) {
@@ -172,6 +219,8 @@ public:
     
     inline size_t loader_id( const char *type ) {
         for( size_t i = 0; i < loader_names_.size(); ++i ) {
+//             std::cout << "loader: " << loader_names_[i] << "\n";
+            
             if( !loader_names_[i].empty() && loader_names_[i] == type ) {
                 return i;
             }
@@ -180,18 +229,7 @@ public:
         return -1;
     }
     
-    resource::base *get_unsafe( const char *name ) {
-        res_map::iterator it = res_.find( std::string( name ) );
-        
-        if( it == res_.end() ) {
-            throw std::runtime_error( "resource not found" );
-        }
-        resource::base *res = it->second;
-        loader_[res->type_id()]->cache( res );
-        
-        return res;
-        
-    }
+    resource::base *get_unsafe( const char *name ) ;
     
     template<typename TAG> 
     typename traits<TAG>::type *get( const char * name ) {
@@ -226,6 +264,8 @@ public:
         return id;
      
     }
+    
+    static manager &get_instance() ;
     
 private:
     manager( const manager & ) {}

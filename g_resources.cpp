@@ -58,6 +58,9 @@ int KeyCompare_c_string( const void *res1_key, const void *res2_key )
 	return strcmp( (char*)(res1_key), (char*)(res2_key) );
 }
 
+
+g_res::manager *g_mgr_nt = 0;
+
 /*
   ==============================
   G_NewResources
@@ -73,6 +76,10 @@ g_resources_t * G_NewResources( void )
 	U_InitMap( res->res_map = NEWTYPE( u_map_t ), map_default, KeyCompare_c_string, GetKey_resource );
 	U_InitMap( res->type_map = NEWTYPE( u_map_t ), map_default, KeyCompare_c_string, GetKey_res_type );
 
+    if( g_mgr_nt == 0 ) {
+        g_mgr_nt = new g_res::manager();
+    }
+    
 	return res;
 }
 
@@ -384,6 +391,9 @@ g_resource_t * G_ResourceSearch( g_resources_t *res, const char *name )
 			__error( "caching of resource '%s' failed\n", name );		
 	}
 
+
+
+    g_res::resource::base* r2 = g_mgr_nt->get_unsafe( name );
 	return r;
 }
 
@@ -656,8 +666,10 @@ void G_ResourcesForEach( g_resources_t *res, void (*action_func)(g_resource_t *r
 
 namespace g_res
 {
-const char *traits<tag::gltex>::name = "gltext";
+const char *traits<tag::gltex>::name = "gltex";
 const char *traits<tag::sound>::name = "sound";
+const char *traits<tag::lump>::name = "lump";
+
 
 namespace resource
 {
@@ -670,6 +682,10 @@ namespace resource
     {
         return traits<tag::gltex>::id;
     }
+    size_t lump::type_id() const
+    {
+        return traits<tag::lump>::id;
+    }
 
 } // namespace resource
 
@@ -681,9 +697,16 @@ void manager::init_from_res_obj ( hobj_t* hobj )
         return;
     }
 
+    std::cout << "name: " << hobj->name << "\n";
+    
     size_t lid = loader_id ( hobj->name );
-    assert ( lid != size_t ( -1 ) );
+    //assert ( lid != size_t ( -1 ) );
 
+    if( lid == size_t(-1) ) {
+        std::cout << "resource type " << hobj->name << " not registered\n";
+        return;
+    }
+    
 
     hpair_t *name = FindHPair ( hobj, "name" );
     if ( !name ) {
@@ -743,4 +766,42 @@ manager::scope_internal::~scope_internal()
     }
     
 }
+manager& manager::get_instance()
+{
+    assert( g_mgr_nt != 0 );
+    return *g_mgr_nt;
+    
 }
+resource::base* manager::get_unsafe ( const char* name )
+{
+    res_map::iterator it = res_.find ( std::string ( name ) );
+
+    if ( it == res_.end() ) {
+        std::cout << "resource not found: " << name << "\n";
+        return 0;
+    }
+    resource::base *res = it->second;
+
+    if ( loader_[res->type_id()] == 0 ) {
+        std::cout << "loader not registered\n";
+
+    } else {
+        
+        
+        loader_[res->type_id()]->cache( res );
+        scope_stack_.back()->add( res );
+    }
+
+    return res;
+
+}
+void manager::dump_scopes() {
+    for( std::vector<scope_internal *>::reverse_iterator it = scope_stack_.rbegin(); it != scope_stack_.rend(); ++it ) {
+        for( boost::intrusive::list<resource::base>::iterator it2 = (*it)->list_.begin(); it2 != (*it)->list_.end(); ++it2 ) {
+//             std::cout << "res: " << *it2 << "\n";
+        }
+    }
+    
+}
+
+} // namespace g_res

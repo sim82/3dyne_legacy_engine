@@ -1318,7 +1318,7 @@ void GC_MainLoop()
 		now = SYS_GetMsec();
 
 		gc_state->time = now;
-
+  //      g_res::manager::get_instance().dump_scopes();
 		//
 		// check async state updates
 		//
