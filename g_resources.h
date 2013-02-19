@@ -117,43 +117,36 @@ class manager {
     typedef std::map<std::string, resource::base *> res_map;    
 public:
     
-    class scope {
+    class scope_guard {
     public:
-    
-        scope() : mgr_(0) {}
-        
-        scope( manager *mgr ) : mgr_(mgr) {
-            mgr_->push_scope(this);
-            
-        } 
-        
-        ~scope();
-    private:
-        void swap( scope &other ) {
-            std::swap( mgr_, other.mgr_ );
-            list_.swap( other.list_ );
-            
+        scope_guard( manager *mgr ) : mgr_(mgr) {
+            id_ = mgr_->push_scope();
         }
         
-        void add( resource::base *res ) {
-            if( !res->is_linked() ) {
-                list_.push_back( *res );
+        ~scope_guard() {
+            size_t id = mgr_->pop_scope();
+            
+            if( id != id_ ) {
+                throw std::runtime_error( "scope id mismatch on pop" );
             }
         }
         
-        friend class manager;
-        
+    private:
         manager *mgr_;
-        boost::intrusive::list<resource::base> list_;
+        size_t id_;
     };
     
     
     manager() {
-        scope bs( this );
-        base_scope.swap( bs );
+        push_scope();
         
     }
-    
+    ~manager() {
+        size_t id = pop_scope();
+        if( id != 0 ) {
+            __named_message( "could not pop root scope. possible resource leak.\n" );
+        }
+    }
     
     manager &get_instance() {
         static manager mgr;
@@ -214,15 +207,24 @@ public:
         loader_[res->type_id()]->uncache( res );
     }
     
-    void push_scope( scope *s ) {
+    size_t push_scope() {
+        scope_internal *s = new scope_internal( scope_stack_.size() );
+        
         scope_stack_.push_back(s);
+        
+        return s->scope_id();
     }
     
-    scope *pop_scope() {
-        scope *s = scope_stack_.back();
+    size_t pop_scope() {
+        scope_internal *s = scope_stack_.back();
         scope_stack_.pop_back();
         
-        return s;
+        
+        size_t id = s->scope_id();
+        delete s;
+        
+        return id;
+     
     }
     
 private:
@@ -232,10 +234,39 @@ private:
     res_map res_;
     std::vector<loader::base *> loader_;
     std::vector<std::string> loader_names_;
+    class scope_internal {
+    public:
     
+        scope_internal( size_t id ) : mgr_(0), scope_id_(id) {}
+        
+        
+        ~scope_internal();
+        
+        size_t scope_id() const {
+            return scope_id_;
+        }
+    private:
+//         void swap( scope_internal &other ) {
+//             std::swap( mgr_, other.mgr_ );
+//             list_.swap( other.list_ );
+//             
+//         }
+        
+        void add( resource::base *res ) {
+            if( !res->is_linked() ) {
+                list_.push_back( *res );
+            }
+        }
+        
+        friend class manager;
+        
+        manager *mgr_;
+        boost::intrusive::list<resource::base> list_;    
+        size_t scope_id_;
+    };
     
-    std::vector<scope *>scope_stack_;
-    scope base_scope;
+    std::vector<scope_internal *>scope_stack_;
+   
     
     
 };

@@ -242,7 +242,52 @@ void G_ResourceFromResObj( g_resources_t *res, hobj_t *cls )
 //	printf( "res: %s ", cls->name );
 	
 	
+    if ( strcmp( cls->type, "resource" ) )
+    {
+        printf( "Warning: G_ResourceFromClass, class is not of type 'resource', ignore\n" );
+        return;
+    }
 
+    rt = (g_res_type_t*) U_MapSearch( res->type_map, cls->name );
+
+    if ( !rt )
+    {
+        printf( "Warning: G_ResourceFromClass, type '%s' of resource is not registered, ignore\n", cls->name );
+        return;
+    }
+
+    name = FindHPair( cls, "name" );
+    if ( !name )
+    {
+        printf( "Warning: G_ResourceFromClass, missing key 'name', ignore\n" );
+        return;
+        }
+//  printf( "%s\n", name->value );
+
+    if ( U_MapSearch( res->res_map, name->value ) )
+    {
+        printf( "Warning: G_ResourceFromClass, there is already a resource with the same name, ignore\n" );
+        return;
+    }
+
+    if ( !rt->register_func )
+    {
+        printf( "Warning: G_ResourceFromClass, type '%s' has no register_func, ignore\n", cls->name );
+        return;
+    }
+
+    r = rt->register_func( cls );
+
+    if ( !r )
+    {
+        printf( "Warning: G_ResourceFromClass, register_func failed, ignore\n" );
+        return;
+    }
+
+    if ( !U_MapInsert( res->res_map, r ) )
+    {
+        printf( "Warning: G_ResourceFromClass, failed\n" );
+    }
 }
 
 
@@ -683,7 +728,7 @@ void manager::init_from_res_file ( const char* name )
     }
 }
 
-manager::scope::~scope()
+manager::scope_internal::~scope_internal()
 {
     if( mgr_ == 0 ) {
         return;
@@ -696,8 +741,6 @@ manager::scope::~scope()
         list_.pop_front();
 
     }
-    scope *s = mgr_->pop_scope();
     
-    assert( s == this );
 }
 }
