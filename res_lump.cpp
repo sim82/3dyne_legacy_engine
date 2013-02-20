@@ -121,3 +121,18 @@ void Res_UncacheLUMP( g_resource_t *res )
 {
 	__named_message( "shame! not impl\n" );
 }
+namespace g_res
+{
+namespace loader
+{
+res* lump::make ( hobj_t* obj )
+{
+    return new res_impl<tag::lump>();
+
+}
+}
+}
+
+
+
+

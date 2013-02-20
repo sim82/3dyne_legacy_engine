@@ -42,4 +42,24 @@ void Res_UnregisterSound( g_resource_t *res );
 void Res_CacheSound( g_resource_t *res );
 void Res_UncacheSound( g_resource_t *res );
 
+
+
+namespace g_res {
+namespace loader {
+    class sound : public base {
+public:
+    virtual res* make( hobj_t *obj ) ;
+    virtual void unmake( res* ) {
+    }
+    virtual void cache( res* ) {
+        __named_message( "\n" );
+    }
+    virtual void uncache( res* ) {
+    }
+};   
+    
+}
+    
+}
+
 #endif

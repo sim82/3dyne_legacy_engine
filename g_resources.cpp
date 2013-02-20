@@ -33,6 +33,7 @@
 
 
 // g_resources.c
+#include <iostream>
 
 #include "interfaces.h"
 #include "defs.h"
@@ -359,7 +360,7 @@ bool_t G_ResourceCheck( g_resources_t *res, char *name )
 */
 g_resource_t * G_ResourceSearch( g_resources_t *res, const char *name )
 {
-	g_resource_t	*r;
+    g_resource_t	*r;
 	g_res_type_t	*rt;
 
 	r = (g_resource_t*)U_MapSearch( res->res_map, name );
@@ -393,7 +394,7 @@ g_resource_t * G_ResourceSearch( g_resources_t *res, const char *name )
 
 
 
-    g_res::resource::base* r2 = g_mgr_nt->get_unsafe( name );
+	g_res::res* r2 = g_mgr_nt->get_unsafe( name );
 	return r;
 }
 
@@ -666,28 +667,11 @@ void G_ResourcesForEach( g_resources_t *res, void (*action_func)(g_resource_t *r
 
 namespace g_res
 {
-const char *traits<tag::gltex>::name = "gltex";
+
 const char *traits<tag::sound>::name = "sound";
 const char *traits<tag::lump>::name = "lump";
 
 
-namespace resource
-{
-    size_t gltex::type_id() const
-    {
-        return traits<tag::gltex>::id;
-    }
-    
-    size_t sound::type_id() const
-    {
-        return traits<tag::gltex>::id;
-    }
-    size_t lump::type_id() const
-    {
-        return traits<tag::lump>::id;
-    }
-
-} // namespace resource
 
 
 void manager::init_from_res_obj ( hobj_t* hobj )
@@ -723,7 +707,7 @@ void manager::init_from_res_obj ( hobj_t* hobj )
         return;
     }
 
-    resource::base *r = loader_[lid]->make ( hobj );
+    res *r = loader_[lid]->make ( hobj );
 
     res_.insert ( std::make_pair ( std::string ( name->value ), r ) );
 
@@ -761,6 +745,7 @@ manager::scope_internal::~scope_internal()
     while ( !list_.empty() ) {
        
         mgr_->uncache ( &list_.front() );
+        
         list_.pop_front();
 
     }
@@ -772,7 +757,7 @@ manager& manager::get_instance()
     return *g_mgr_nt;
     
 }
-resource::base* manager::get_unsafe ( const char* name )
+res* manager::get_unsafe ( const char* name )
 {
     res_map::iterator it = res_.find ( std::string ( name ) );
 
@@ -780,24 +765,32 @@ resource::base* manager::get_unsafe ( const char* name )
         std::cout << "resource not found: " << name << "\n";
         return 0;
     }
-    resource::base *res = it->second;
+    res *res = it->second;
 
-    if ( loader_[res->type_id()] == 0 ) {
-        std::cout << "loader not registered\n";
-
+    if( res->cached() ) {
+        if( !res->is_linked() ) {
+            __warning( "resource cached but not linked!\n" );
+        }
     } else {
-        
-        
-        loader_[res->type_id()]->cache( res );
-        scope_stack_.back()->add( res );
+        if ( loader_[res->type_id()] != 0 ) {
+            loader_[res->type_id()]->cache( res );
+            //res->cached( true );
+            
+            if( !res->is_linked() ) {
+                scope_stack_.back()->add( res );    
+            } else {
+                __warning( "resource linked but not cached!\n" );   
+            }
+        } else {
+            __warning( "loader not registered\n" );
+        }
     }
 
     return res;
-
 }
 void manager::dump_scopes() {
     for( std::vector<scope_internal *>::reverse_iterator it = scope_stack_.rbegin(); it != scope_stack_.rend(); ++it ) {
-        for( boost::intrusive::list<resource::base>::iterator it2 = (*it)->list_.begin(); it2 != (*it)->list_.end(); ++it2 ) {
+        for( boost::intrusive::list<res>::iterator it2 = (*it)->list_.begin(); it2 != (*it)->list_.end(); ++it2 ) {
 //             std::cout << "res: " << *it2 << "\n";
         }
     }

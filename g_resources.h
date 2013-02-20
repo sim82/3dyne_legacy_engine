@@ -46,126 +46,97 @@
 
 #include "g_resourcesdefs.h"
 #include "shock.h"
+
+// class res_gltex_register_t;
+// struct res_sound_register_t;
+// struct res_lump_register_t;
+
+// struct res_gltex_cache_t;
+// struct res_sound_cache_t;
+// struct res_lump_cache_t;
+
 namespace g_res {
 
+
 namespace tag {
-    class gltex;
-    class sound;
+    
+    
     class lump;
 }
 
-namespace resource {
-class base : public boost::intrusive::list_base_hook<> {
-public:
-    virtual size_t type_id() const = 0;
-    virtual ~base() {}
-private:
-    
-};
 
-class gltex : public base {
-    virtual size_t type_id() const ;
-};
-
-class sound : public base {
-    virtual size_t type_id() const ;
-};
-
-class lump : public base {
-    virtual size_t type_id() const ;
-};
-
-}
 
 
 
 template<typename tag>
-class traits {
+class traits;
+
+
+
+
+
+
+
+
+
+class res : public boost::intrusive::list_base_hook<> {
+public:
+    virtual bool cached() const = 0;
+    virtual size_t type_id() const = 0;
+    virtual ~res() { }
+};
+
+template<typename TAG>
+class res_impl : public res {
+public:
+    typename traits<TAG>::reg_state *rs_;
+    typename traits<TAG>::cache_state *cs_;
     
+    res_impl() : rs_(0), cs_(0) { }
+    
+    bool cached() const {
+        return cs_ != 0;
+    }
+    
+    size_t type_id() const {
+        return traits<TAG>::id;
+    }
+private:
+    res_impl( const res_impl & ) {}
+    res_impl &operator=( const res_impl & ) {}
 };
 
-template<>
-class traits<tag::gltex> {
-public:
-    typedef resource::gltex type;
-    const static size_t id = 1;
-    const static char *name;// = "gltex";
-};
 
-template<>
-class traits<tag::sound> {
-public:
-    typedef resource::sound type;
-    const static size_t id = 2;
-    const static char *name;// = "sound";
-};
-
-template<>
-class traits<tag::lump> {
-public:
-    typedef resource::lump type;
-    const static size_t id = 3;
-    const static char *name;// = "sound";
-};
+template<typename TAG>
+inline res_impl<TAG> *safe_cast( res * r ) {
+    if( r->type_id() != traits<TAG>::id ) {
+        __error( "type chaos: res->type_id() != traits<tag::gltex>::id\n" );
+    }
+    
+    return static_cast<res_impl<TAG> *>(r);
+}
 
 
 namespace loader {
 class base {
 public:
-    virtual resource::base *make( hobj_t *obj ) = 0;
-    virtual void unmake( resource::base * ) = 0;
-    virtual void cache( resource::base * ) = 0;
-    virtual void uncache( resource::base * ) = 0;
+    virtual res* make( hobj_t *obj ) = 0;
+    virtual void unmake( res* ) = 0;
+    virtual void cache( res* ) = 0;
+    virtual void uncache( res* ) = 0;
     
     
 };
 
-class gltex : public base {
-public:
-    virtual resource::base *make( hobj_t *obj ) {
-        return new resource::gltex();
-    }
-    virtual void unmake( resource::base * ) {
-    }
-    virtual void cache( resource::base * ) {
-        __named_message( "\n" );
-    }
-    virtual void uncache( resource::base * ) {
-    }
-};
 
-class sound : public base {
-public:
-    virtual resource::base *make( hobj_t *obj ) {
-        return new resource::sound();
-    }
-    virtual void unmake( resource::base * ) {
-    }
-    virtual void cache( resource::base * ) {
-        __named_message( "\n" );
-    }
-    virtual void uncache( resource::base * ) {
-    }
-};
 
-class lump : public base {
-public:
-    virtual resource::base *make( hobj_t *obj ) {
-        return new resource::lump();
-    }
-    virtual void unmake( resource::base * ) {
-    }
-    virtual void cache( resource::base * ) {
-        __named_message( "\n" );
-    }
-    virtual void uncache( resource::base * ) {
-    }
-};
+
+
 }
 
 
 class manager {
-    typedef std::map<std::string, resource::base *> res_map;    
+    typedef std::map<std::string, res*> res_map;    
 public:
     
     class scope_guard {
@@ -229,20 +200,20 @@ public:
         return -1;
     }
     
-    resource::base *get_unsafe( const char *name ) ;
+    res *get_unsafe( const char *name ) ;
     
     template<typename TAG> 
     typename traits<TAG>::type *get( const char * name ) {
-        resource::base *res = get_unsafe( name );
-        if( res->type_id() == traits<TAG>::id ) {
-            return static_cast<typename traits<TAG>::type *>(res);
+        res *r = get_unsafe( name );
+        if( r->type_id() == traits<TAG>::id ) {
+            return static_cast<typename traits<TAG>::type *>(r);
         } else {
             throw std::runtime_error( "wrong res type" );
         }
     }
     
-    void uncache( resource::base *res ) {
-        loader_[res->type_id()]->uncache( res );
+    void uncache( res *r ) {
+        loader_[r->type_id()]->uncache( r );
     }
     
     size_t push_scope() {
@@ -292,16 +263,16 @@ private:
 //             
 //         }
         
-        void add( resource::base *res ) {
-            if( !res->is_linked() ) {
-                list_.push_back( *res );
+        void add( res *r ) {
+            if( !r->is_linked() ) {
+                list_.push_back( *r );
             }
         }
         
         friend class manager;
         
         manager *mgr_;
-        boost::intrusive::list<resource::base> list_;    
+        boost::intrusive::list<res> list_;    
         size_t scope_id_;
     };
     
@@ -314,6 +285,7 @@ private:
 
 
 }
+
 
 
 g_resources_t * G_NewResources( void );
@@ -332,7 +304,7 @@ g_resource_t * G_NewResource( char *res_name, char *res_type );
 void G_ResourceFromResObj( g_resources_t *res, hobj_t *cls );
 void G_ResourceFromClass( g_resources_t *res, const char *name );
 
-bool_t G_ResourceCheck( g_resources_t *res, char *name );
+bool G_ResourceCheck( g_resources_t *res, char *name );
 g_resource_t * G_ResourceSearch( g_resources_t *res, const char *name );
 g_resource_t * G_ResourceAttach( g_resources_t *res, char *name, char *user_name, int (*user_callback_func)(g_resource_t *r, int reason) );
 void G_ResourceDetach( g_resources_t *res, char *name, char *user_name );

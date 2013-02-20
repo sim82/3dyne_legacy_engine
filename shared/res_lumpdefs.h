@@ -48,4 +48,34 @@ typedef struct res_lump_cache_s
 	char		data[16];	// variable sized
 } res_lump_cache_t;
 
+
+
+
+namespace g_res {
+namespace tag {
+     class lump;
+}
+
+
+template<typename tag>
+class traits;
+
+
+template<>
+class traits<tag::lump> {
+public:
+//     typedef resource::lump type;
+
+    typedef res_lump_register_t reg_state;
+    typedef res_lump_cache_t cache_state;
+
+    const static size_t id = 3;
+    const static char *name;// = "sound";
+};
+} // namespace g_res
+
+
+
+
+
 #endif
