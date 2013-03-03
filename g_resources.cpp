@@ -393,8 +393,6 @@ g_resource_t * G_ResourceSearch( g_resources_t *res, const char *name )
 	}
 
 
-
-	g_res::res* r2 = g_mgr_nt->get_unsafe( name );
 	return r;
 }
 
@@ -735,22 +733,7 @@ void manager::init_from_res_file ( const char* name )
     }
 }
 
-manager::scope_internal::~scope_internal()
-{
-    if( mgr_ == 0 ) {
-        return;
-    }
-        
-    
-    while ( !list_.empty() ) {
-       
-        mgr_->uncache ( &list_.front() );
-        
-        list_.pop_front();
 
-    }
-    
-}
 manager& manager::get_instance()
 {
     assert( g_mgr_nt != 0 );
@@ -786,15 +769,55 @@ res* manager::get_unsafe ( const char* name )
         }
     }
 
+   // std::cout << "res: " << name << "\n";
+    
     return res;
 }
 void manager::dump_scopes() {
+    size_t snum = 0;
+    
     for( std::vector<scope_internal *>::reverse_iterator it = scope_stack_.rbegin(); it != scope_stack_.rend(); ++it ) {
+        std::cout << "res scope " << snum << ":\n";
+        ++snum;
+
         for( boost::intrusive::list<res>::iterator it2 = (*it)->list_.begin(); it2 != (*it)->list_.end(); ++it2 ) {
-//             std::cout << "res: " << *it2 << "\n";
+             std::cout << "res: " << it2->name() << "\n";
         }
     }
     
+}
+size_t manager::push_scope()
+{
+    scope_internal *s = new scope_internal ( scope_stack_.size() );
+
+    scope_stack_.push_back ( s );
+
+    return s->scope_id();
+}
+size_t manager::pop_scope()
+{
+    
+    scope_internal *s = scope_stack_.back();
+    scope_stack_.pop_back();
+
+    
+    
+    while ( !s->list_.empty() ) {
+    
+    //    std::cout << "pop_scope uncache: " << s->list_.front().name() << "\n";
+        getchar();
+        uncache ( &s->list_.front() );
+        
+        s->list_.pop_front();
+
+    }
+    
+
+    size_t id = s->scope_id();
+    delete s;
+
+    return id;
+
 }
 
 } // namespace g_res

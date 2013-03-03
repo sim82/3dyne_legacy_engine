@@ -1106,7 +1106,7 @@ void gltex::uncache ( res *r ) {
     res_impl< tag::gltex >* res_gltex = safe_cast<tag::gltex>(r);
     
     free( res_gltex->cs_ );
-    
+    res_gltex->cs_ = 0;
 }
 } // namespace loader
 

@@ -1308,6 +1308,8 @@ void GC_MainLoop()
 
 	SHM_SetCurPage( "main" );
 
+    std::auto_ptr<g_res::manager::scope_guard> res_scope;
+    
 	for( ;; )
 	{
 		static int	rfalltime = 0, rfnum = 0;
@@ -1344,6 +1346,9 @@ void GC_MainLoop()
 		}
 		if ( gc_state->u_start_single )
 		{
+            
+            res_scope.reset();
+            res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
 			gc_state->u_start_single = false;
 			GC_CleanUp( gc_state );
 			GC_InitSingle( gc_state );
@@ -1443,6 +1448,18 @@ void GC_MainLoop()
 			wf_mdx = wf_mdy = 0;
 		}
 
+		{
+            unsigned int time = SYS_GetMsec();
+            static unsigned int last = time;
+            
+            if( time - last > 2000 ) {
+               
+                g_res::manager::get_instance().dump_scopes();
+                last = time;
+            }
+            
+        }
+		
 		{
 			unsigned int	ms1, ms2;
 

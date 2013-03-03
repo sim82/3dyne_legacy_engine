@@ -54,7 +54,7 @@
 // struct res_gltex_cache_t;
 // struct res_sound_cache_t;
 // struct res_lump_cache_t;
-
+#include <iostream>
 namespace g_res {
 
 
@@ -83,6 +83,8 @@ class res : public boost::intrusive::list_base_hook<> {
 public:
     virtual bool cached() const = 0;
     virtual size_t type_id() const = 0;
+    virtual const char *name() const = 0;
+    
     virtual ~res() { }
 };
 
@@ -101,6 +103,11 @@ public:
     size_t type_id() const {
         return traits<TAG>::id;
     }
+    const char *name() const {
+        return rs_->path;
+    }
+    
+    
 private:
     res_impl( const res_impl & ) {}
     res_impl &operator=( const res_impl & ) {}
@@ -141,12 +148,17 @@ public:
     
     class scope_guard {
     public:
+        
+        
         scope_guard( manager *mgr ) : mgr_(mgr) {
             id_ = mgr_->push_scope();
         }
         
         ~scope_guard() {
             size_t id = mgr_->pop_scope();
+            
+            std::cout << "~scope_guard\n";
+            
             
             if( id != id_ ) {
                 throw std::runtime_error( "scope id mismatch on pop" );
@@ -203,10 +215,10 @@ public:
     res *get_unsafe( const char *name ) ;
     
     template<typename TAG> 
-    typename traits<TAG>::type *get( const char * name ) {
+    res_impl<TAG> *get( const char * name ) {
         res *r = get_unsafe( name );
         if( r->type_id() == traits<TAG>::id ) {
-            return static_cast<typename traits<TAG>::type *>(r);
+            return static_cast<res_impl<TAG> *>(r);
         } else {
             throw std::runtime_error( "wrong res type" );
         }
@@ -216,25 +228,9 @@ public:
         loader_[r->type_id()]->uncache( r );
     }
     
-    size_t push_scope() {
-        scope_internal *s = new scope_internal( scope_stack_.size() );
-        
-        scope_stack_.push_back(s);
-        
-        return s->scope_id();
-    }
+    size_t push_scope() ;
     
-    size_t pop_scope() {
-        scope_internal *s = scope_stack_.back();
-        scope_stack_.pop_back();
-        
-        
-        size_t id = s->scope_id();
-        delete s;
-        
-        return id;
-     
-    }
+    size_t pop_scope() ;
     
     static manager &get_instance() ;
     
@@ -248,10 +244,10 @@ private:
     class scope_internal {
     public:
     
-        scope_internal( size_t id ) : mgr_(0), scope_id_(id) {}
+        scope_internal( size_t id ) : scope_id_(id) {}
         
         
-        ~scope_internal();
+        
         
         size_t scope_id() const {
             return scope_id_;
@@ -271,7 +267,7 @@ private:
         
         friend class manager;
         
-        manager *mgr_;
+        
         boost::intrusive::list<res> list_;    
         size_t scope_id_;
     };
