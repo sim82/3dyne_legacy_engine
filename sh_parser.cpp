@@ -193,7 +193,10 @@ void SHP_ParseFile( ibfile_t* handle )
 
 	buf = ( char* )alloca( size + 1 );
 	__chkptr( buf );
-	IB_Read( buf, size, 1, handle );
+	size_t s2 = IB_Read( buf, size, 1, handle );
+    if( s2 != size ) {
+        __error( "bad file size\n" );
+    }
 	buf[size] = 0;
 
 

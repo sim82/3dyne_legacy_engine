@@ -58,7 +58,7 @@ int main( int argc, char *argv[] )
     int	ret;
     
 #ifdef win32_x86
-    _chdir("E:\\src\\dd-0.2-devel-exec");
+    _chdir("E:\\src\\3dyne_legacy_devel_exec");
 #endif
     ret = g_main( argc, argv );
     return ret;

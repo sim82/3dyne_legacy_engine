@@ -43,13 +43,18 @@ endif()
 
 
 if(WIN32)
-  set( CMAKE_CXX_FLAGS "-D_SCL_SECURE_NO_WARNINGS /INCREMENTAL:NO" )
+  set( CMAKE_CXX_FLAGS "-D_SCL_SECURE_NO_WARNINGS /INCREMENTAL:NO /EHsc" )
 
   include_directories( 3dyne_extlibs/jpeg-6b 3dyne_extlibs/bzip2-1.0.6 3dyne_extlibs/SDL-1.2.15/include )
   #if( ${SDL_ROOT} )
    # include_directories( ${SDL_ROOT}/include )
   #  LINK_DIRECTORIES( ${SDL_ROOT}/lib/x86 )	
   #endif()
+
+  IF( NOT BOOST_ROOT)
+    set(BOOST_ROOT C:\\src\\boost_1_48_0)
+  ENDIF()
+  include_directories( ${BOOST_ROOT} )
 
   add_definitions( -Dwin32_x86 -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="win32.x86") 
   
@@ -213,7 +218,7 @@ add_executable( dd ${ENGINE_SRC} ${R_FAKE_SRC} ${R_GEN_GL_SRC} ${SS_SRC} )
 add_executable( disk_hash disk_hash.cpp )
 
 if(WIN32)
-  
+  add_executable( colrm_dh colrm_dh.cpp )
   target_link_libraries( dd jpeg bz2 ws2_32 opengl32 winmm SDL  )
 else()
   target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 GL )

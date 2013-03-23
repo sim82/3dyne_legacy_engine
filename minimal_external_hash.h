@@ -15,19 +15,26 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
+
 #include <stdint.h>
 
 #include <cassert>
 #include <cstring>
 // #include <cstdint>
-
+#include <string>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <iterator>
 #include <stdexcept>
+
+#ifndef win32_x86
+#include <unistd.h>
+#include <sys/mman.h>
+#else
+#include "disable_shit.h"
+#include <Windows.h>
+#endif
 
 namespace meh {
 #ifndef win32_x86
@@ -96,7 +103,7 @@ private:
     bool read_write_;
 };
 #else
-#error untested Win32 implementation of mapped_file
+//#error untested Win32 implementation of mapped_file
 class mapped_file {
 public:
     mapped_file( const char *filename, bool read_write )
@@ -104,21 +111,24 @@ public:
       read_write_(read_write)
     {
         DWORD access = GENERIC_READ;
-        DWORD share = FILE_SHARE_READ;
-	DWORD create = OPEN_EXISTING;
-	DWORD prot = PAGE_READONLY;
+	    DWORD share = FILE_SHARE_READ;
+        DWORD create = OPEN_EXISTING;
+	    DWORD prot = PAGE_READONLY;
         if( read_write ) {
-            mode |= GENERIC_WRITE;
+            access |= GENERIC_WRITE;
             prot |= FILE_SHARE_WRITE;
-	    create = CREATE_ALWAYS;
+	       // create = CREATE_ALWAYS; wtf? thats wrong
             prot = PAGE_READWRITE;
         }
         
         fd_ = CreateFile (filename, access, share, NULL, create, FILE_ATTRIBUTE_NORMAL, NULL);
         assert( fd_ != (HANDLE)INVALID_HANDLE_VALUE );
 
-        DWORD size_low_ = GetFileSize( fd_, &size_high_ );
-	mapping_ = CreateFileMapping (fd_, NULL, prot, size_high_, size_low_, NULL);
+        size_low_ = GetFileSize( fd_, &size_high_ );
+
+        std::cout << "file size: " << size_low_ << " " << size_high_ << std::endl;
+
+        mapping_ = CreateFileMapping (fd_, NULL, prot, size_high_, size_low_, NULL);
         assert( mapping_ != 0 );
 
         map();
@@ -127,11 +137,11 @@ public:
     size_t size() const {
 	// TODO: check bit fiddling (is a left shift up or down...)
 	
-        size_t size = size_high;
-	size <<= 32;
-	size |= size_low;
+        size_t size = size_high_;
+        size <<= 32;
+        size |= size_low_;
 	
-	return size;
+	    return size;
     }
     
     void unmap() {
@@ -141,12 +151,12 @@ public:
     }
     void map() {
         assert( base_ == 0 );
-	DWORD access = FILE_MAP_READ;
+	    DWORD access = FILE_MAP_READ;
         if( read_write_ ) {
 	    access |= FILE_MAP_WRITE;
         }
         
-	base_ = MapViewOfFile ( mapping_, access, 0, 0, 0);
+	    base_ = MapViewOfFile ( mapping_, access, 0, 0, 0);
 	
         assert( base_ != 0 );
         
@@ -231,9 +241,10 @@ public:
     
     void write( const char *filename ) {
         {
+        
             std::ofstream os( filename );
             os.seekp( append_pos_ );
-            
+            assert( size_t(os.tellp()) == append_pos_ );
             int_type x = table_size_;
             
             // write the table size at the end of the file
@@ -256,7 +267,7 @@ public:
             *append_pos = 0; ++append_pos;
             
             // write file size
-            std::ifstream is( it->first.c_str() );
+            std::ifstream is( it->first.c_str(), std::ios::binary );
             assert( is.good() );
 
             is.seekg( 0, std::ios::end );

@@ -105,6 +105,9 @@ void ShockHandler()
 //	raise( SIGTERM );
 
 	SYS_CloseConsole();
+#ifdef win32_x86
+    _asm{ int 3 }
+#endif
 	exit( -1 );
 }
 
@@ -117,7 +120,7 @@ LONG WINAPI win32Exception( struct _EXCEPTION_POINTERS *einfo )
 {
 	__warning( "unhandled exception\n" );
 	printf( "exception code: 0x%x\n", einfo->ExceptionRecord->ExceptionCode );
-
+    _asm{ int 3 }
 #ifdef trace_functions
 	{
 		char	funcname[512];
@@ -144,6 +147,9 @@ void SecureShutDown( int sig )
 	}
 	__named_message( "\n" );
 	__error( "fatal signal %d caught.\n", sig );
+#ifdef win32_x86
+    _asm{ int 3 }
+#endif
 //	kill( getpid(), 9 );
 
 
@@ -423,7 +429,7 @@ int g_main( int argc, char* argv[] )
 #ifdef win32_x86
 	LPTOP_LEVEL_EXCEPTION_FILTER xxx;
 
-	SetUnhandledExceptionFilter( win32Exception );
+	//SetUnhandledExceptionFilter( win32Exception );
 #endif
 
 	SOS_SetShockHandler( ShockHandler );

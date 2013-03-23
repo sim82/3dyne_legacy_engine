@@ -185,8 +185,8 @@ static void jpeg_error_exit( j_common_ptr cinfo)
 {
 	my_error_ptr myerr = (my_error_ptr) cinfo->err;
 	(*cinfo->err->output_message) (cinfo);
-
-	longjmp (myerr->setjmp_buffer, 1);
+    __error( "jpeg error\n" );
+	//longjmp (myerr->setjmp_buffer, 1);
 }
 
 void Res_CreateGLTEX_rgb( int width, int height, unsigned char *color_buf );
@@ -217,7 +217,7 @@ res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
 
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = jpeg_error_exit;
-	
+#if 0
 	if (setjmp (jerr.setjmp_buffer))                                              
 	{
 
@@ -227,7 +227,7 @@ res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
 		__error( "XJT: JPEG load error\n");
 	       
 	}
-
+#endif
 
 
 	printf( "%p\n", cinfo.err );

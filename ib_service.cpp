@@ -79,7 +79,7 @@ namespace impl_iso_fstream {
     class file : public ibase::file {
     public:
         file( const char *filename ) 
-        : is_(filename) 
+            : is_(filename, std::ios::binary) 
         {
             
         }
@@ -105,8 +105,9 @@ namespace impl_iso_fstream {
                 __error( "nb != 1 not supported" );
             }
             
-            return is_.readsome( (char*)ptr, bsize );
-            
+            //return is_.readsome( (char*)ptr, bsize );
+            is_.read( (char*)ptr, bsize );
+            return is_.gcount();
         }
         virtual int get_char() {
             return is_.get();
@@ -306,7 +307,7 @@ namespace impl_meh_nonmapped {
             return size_;
         }
         virtual size_t get_pos() {
-            return is_.tellg() - base_offset;
+            return off_t(is_.tellg()) - base_offset;
         }
         virtual void set_pos( size_t pos ) {
             is_.seekg( base_offset + pos, std::ios::beg );
