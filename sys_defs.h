@@ -40,12 +40,13 @@
 #define sys_defs_h
 
 #include <stdio.h> // FILE* not for interfaces!
+#include "compiler_config.h"
 
 #if !defined __GNUC__
 #define __inline__
 #endif
 
-#if defined(linux_i386) || defined (irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 #include <sys/types.h> // for bittypes
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -54,7 +55,7 @@
 #define FOPEN_READ	"r"
 #define FOPEN_WRITE	"w"
 
-#elif defined(win32_x86)
+#elif D3DYNE_OS_WIN
 #include <fcntl.h>
 
 
@@ -62,10 +63,7 @@ typedef	int	int32_t;
 typedef	unsigned int	u_int32_t;
 typedef short	int16_t;
 typedef	unsigned short	u_int16_t;
-#if !defined (win32_x86)
-typedef char	int8_t;
-typedef	unsigned char	u_int8_t;
-#endif
+
 
 #define M_PI            3.14159265358979323846  /* pi */
 

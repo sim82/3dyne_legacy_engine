@@ -38,52 +38,16 @@
 
 #include "defs.h"
 
-extern int mm_malloced, mm_freed, mm_nummalloc, mm_numfree;
-
 void *_MM_Malloc( int );
 void _MM_Free( void * );
 
-#ifndef log_malloc
-
-
 #define MM_Malloc( x )	_MM_Malloc( x )
 #define MM_Free( x )		_MM_Free( x )
-
-#else 
-void *_MM_LogMalloc( int, char *, int );
-void _MM_LogFree( void *, char *, int );
-
-#define MM_Malloc( x )	_MM_LogMalloc( x , __FILE__, __LINE__ )
-#define MM_Free( x )	_MM_LogFree( x , __FILE__, __LINE__ )
-#endif 
-
-
-
-extern int	sc_newmallocedbytes;
-
 
 void  MM_StartUp();
 void MM_ShutDown( void );
 
 void MM_ShowInfo();
 
-//void  MM_CoreDump();
-//void MM_AddZone( unsigned int size, int zid );
-//void MM_MallocZones();
-//void MM_FreeZone( int zid );
-//void *MM_ZoneMalloc( unsigned int size, int zid );
-
-//void MM_DumpUsage( void );
-
-//void MM_SetCurrentZone( int );
-
-void  CA_StartUp();
-void  CA_ShutDown();
-void  CA_BeginCaching();
-int   CA_EndCaching();
-void  CA_CoreDump();
-void  *CA_Load( char *, void *(*loadfunc)( char*, int ) );
-int CA_CacheFile( char *, void *(*loadfunc)( char *, int ), int );	
-void *CA_GetPtr( int );
 
 #endif

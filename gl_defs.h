@@ -37,6 +37,8 @@
 #ifndef gl_defs_h
 #define gl_defs_h
 
+#include "compiler_config.h"
+
 typedef struct {
 	char	*extstring;	// complete extension string
 	int	arb_multitexture; // have ARB_MULTITEXTURE
@@ -45,7 +47,7 @@ typedef struct {
 	int	flushinterval;	// primitives drawn before driver needs a flush
 } gl_info_t;
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
   #include <Windows.h>
 #endif
 

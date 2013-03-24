@@ -45,7 +45,7 @@ static char	spacebuf[] = "                                                      
 
 void TF_LogEnter()
 {
-#ifdef linux_i386
+#if D3DYNE_OS_UNIXLIKE
 	if( log_h == -1 )
 	{
 		log_h = open( "./func.log", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP );

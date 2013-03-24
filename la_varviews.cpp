@@ -41,12 +41,12 @@
 
 static void mem_mallocs( int flag, char *string )
 {
-	sprintf( string, "bytes:\t%d, %d, %d", mm_malloced - mm_freed, mm_malloced, mm_freed );
+//	sprintf( string, "bytes:\t%d, %d, %d", mm_malloced - mm_freed, mm_malloced, mm_freed );
 }
 
 static void mem_nums( int flag, char *string )
 {
-	sprintf( string, "num:\t%d, %d, %d", mm_nummalloc - mm_numfree, mm_nummalloc, mm_numfree );
+//	sprintf( string, "num:\t%d, %d, %d", mm_nummalloc - mm_numfree, mm_nummalloc, mm_numfree );
 }
 
 static void frameinfo( int flag, char *string )

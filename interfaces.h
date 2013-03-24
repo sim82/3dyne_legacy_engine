@@ -38,6 +38,7 @@
 
 #ifndef __interfaces
 #define __interfaces
+#include "compiler_config.h"
 
 #include "s_config.h"
 #include "s_mem.h"

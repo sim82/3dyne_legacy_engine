@@ -193,7 +193,10 @@ void SHP_ParseFile( ibfile_t* handle )
 
 	buf = ( char* )alloca( size + 1 );
 	__chkptr( buf );
-	IB_Read( buf, size, 1, handle );
+	size_t s2 = IB_Read( buf, size, 1, handle );
+    if( s2 != size ) {
+        __error( "bad file size\n" );
+    }
 	buf[size] = 0;
 
 
@@ -293,7 +296,7 @@ void SHP_ParseLine( char* line )
 } 
 
 
-void SHP_ParseToken( char** buf_ptr )
+void SHP_ParseToken_horribly_broken( char** buf_ptr )
 {
 	int	c;
 	int	lquota = 0;
@@ -361,6 +364,10 @@ void SHP_ParseToken( char** buf_ptr )
 		sh_token[pos] = ( char )c;
 		
 		pos++;
+
+		if( *buf == 0 ) {
+			break;
+		}
 		c = *(buf++);	
 	}
 	if( pos > 255 )  // double save
@@ -370,6 +377,69 @@ void SHP_ParseToken( char** buf_ptr )
 	*buf_ptr = buf;
 	return;
 }
+
+void SHP_ParseToken( char** buf_ptr )
+{
+	int	c;
+	bool is_quoted = false;
+	int	pos = 0;
+	char	*buf;
+	
+	//
+	// this is a valid use case for goto. fullstop.
+	//
+	
+	buf = *buf_ptr;
+	if( !buf )
+	{
+		goto end_error;
+	}
+
+	// skip whitespace
+	while( (*buf) != 0 && isspace( *buf ) ) {
+		buf++;
+	}
+
+
+	// return if no non-space char was found
+	if( *buf == 0 ) {
+		goto end;
+	}
+
+	// return empty token when comment is found (is this really handled correctly everywhere? This should imitate the behaviour of the old horribly broken version...)
+	if( *buf == '#' ) {
+		goto end_error;
+	}
+
+	// check for (and ignore) quote
+	if( *buf == '\"' ) {
+		is_quoted = true;
+		++buf;
+	}
+	
+	// copy token body (delimited by either space or quote)
+	while( *buf != 0 && !( (!is_quoted) && isspace( *buf )) && !(is_quoted && *buf == '\"') ) {
+		sh_token[pos] = *buf;
+		++buf;
+		++pos;
+	}
+	
+	// skip delmiter if above loop didn't hit zero terminator
+	if( *buf != 0 ) {
+		++buf;
+	}
+
+	goto end;
+
+end_error:
+	pos = 0;
+
+end:
+	sh_token[pos] = 0;
+	*buf_ptr = buf;
+	return;
+}
+
 
 /*
   ==============================

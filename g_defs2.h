@@ -36,6 +36,7 @@
 
 #ifndef __g_defs2
 #define __g_defs2
+#include "compiler_config.h"
 
 #include "lib_containerdefs.h"
 #include "lib_queuedefs.h"
@@ -44,7 +45,7 @@
 #include "events.h"
 #include "g_api.h"
 
-#if !defined( win32_x86 )
+#if D3DYNE_OS_UNIXLIKE
 #include <sys/types.h>                                                          
 #include <sys/socket.h>                                                         
 #include <netinet/in.h>                                                         

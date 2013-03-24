@@ -38,6 +38,8 @@
 #ifndef r_private_h
 #define r_private_h
 
+
+#include "compiler_config.h"
 #include "defs.h"
 #include "gl_defs.h"
 
@@ -46,16 +48,13 @@ extern gl_info_t	*r_glinfo;
 
 
 
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 
 #include <X11/Xlib.h>
 #include <X11/X.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
-#if defined( linux_i386 )
-#include <X11/extensions/Xxf86dga.h>
-#include <X11/extensions/xf86vmode.h>
-#endif
+
 
 // GL/gl.h is included in shared/sys_interfaces.h !
 //#include "gl_service.h"
@@ -94,7 +93,7 @@ void I_X11DoMouse( XEvent, Display*, Window );
 
 void I_X11DoMouseButton( XEvent, Display* );
 
-#elif defined( win32_x86 )
+#elif D3DYNE_OS_WIN
 
 #include <windows.h>
 //#include <directx.h>

@@ -35,6 +35,8 @@
 // g_library.c
 // shared lib handling
 
+#include "compiler_config.h"
+
 #include "interfaces.h"
 #include "g_api.h"
 #include "l_wrap.h"
@@ -103,7 +105,7 @@ int G_LibLoad( l_library_t *lib )
 	
 	
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
 	strcpy( filename, lib->name );
 	SYS_DllAddSuffix( filename, 0 );
 #else

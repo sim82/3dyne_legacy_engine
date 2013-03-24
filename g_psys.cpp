@@ -33,7 +33,7 @@
 
 
 // g_psys.c
-
+#include "compiler_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -46,7 +46,7 @@
 #include "lib_psys.h"
 #include "g_psys.h"
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
 inline int rint(float x){
  return (x+0.5);
 }

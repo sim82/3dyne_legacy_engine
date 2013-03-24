@@ -33,7 +33,7 @@
 
 
 // client.c
-
+#include "compiler_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -44,7 +44,7 @@
 #include "shock.h"
 
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
 #define DD_DLL_EXPORT __declspec(dllexport)
 #else
 #define DD_DLL_EXPORT

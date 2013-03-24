@@ -33,8 +33,8 @@
 
 
 // gc_service.c
-
-#ifdef win32_x86
+#include "compiler_config.h"
+#if D3DYNE_OS_WIN
   typedef int socklen_t;
   #include <winsock2.h>  
 #endif
@@ -56,7 +56,7 @@
 #include "g_client.h"
 #include "g_library.h"
 #include "snd_deamon.h"
-#if !defined (win32_x86)
+#if D3DYNE_OS_UNIXLIKE
 #include <stdio.h>                                                              
 #include <sys/types.h>                                                          
 #include <sys/socket.h>                                                         
@@ -141,7 +141,7 @@ gc_state_t	*gc_state;
 
 // fixme: sysdep stuff!
 
-#if defined( win32_x86 )
+#if D3DYNE_OS_WIN
 static int gc_wsisup = 0;
 static WSADATA winsockdata;
 #endif
@@ -1063,7 +1063,7 @@ bool_t GC_NetOpenLocalPort( gc_state_t *state, bool_t auto_port )
 	state->udp_state = gcUdpState_is_init;
 
 // sydep stuff!
-#if defined( win32_x86 )
+#if D3DYNE_OS_WIN
 	if( !gc_wsisup )
 	{
 		int r;
@@ -1143,7 +1143,7 @@ void GC_NetCloseLocalPort( gc_state_t *state )
 		__error( "expected gcUdpState_is_init\n" );
 
 	
-#ifndef win32_x86
+#if D3DYNE_OS_WIN
 	res = close( state->local_sock );
 #else
 	res = closesocket( state->local_sock );
@@ -1468,7 +1468,7 @@ void GC_MainLoop()
 			ms_rfbegin = ms1;
 			GC_RunClientFrame();
 
-#if !defined(win32_x86)
+#if D3DYNE_OS_UNIXLIKE
 			{
 				struct timespec ts;
 				ts.tv_sec = 0;

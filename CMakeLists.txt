@@ -1,30 +1,30 @@
 #-------------------------------------------------------------------------------
 # 3dyne Legacy Engine GPL Source Code
-# 
+#
 # Copyright (C) 1996-2012 Matthias C. Berger & Simon Berger.
-# 
+#
 # This file is part of the 3dyne Legacy Engine GPL Source Code ("3dyne Legacy
 # Engine Source Code").
-#   
+#
 # 3dyne Legacy Engine Source Code is free software: you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation, either version 3 of the License,
 # or (at your option) any later version.
-# 
+#
 # 3dyne Legacy Engine Source Code is distributed in the hope that it will be
 # useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 # Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License along with
 # 3dyne Legacy Engine Source Code.  If not, see
 # <http://www.gnu.org/licenses/>.
-# 
+#
 # In addition, the 3dyne Legacy Engine Source Code is also subject to certain
 # additional terms. You should have received a copy of these additional terms
 # immediately following the terms and conditions of the GNU General Public
 # License which accompanied the 3dyne Legacy Engine Source Code.
-# 
+#
 # Contributors:
 #     Matthias C. Berger (mcb77@gmx.de) - initial API and implementation
 #     Simon Berger (simberger@gmail.com) - initial API and implementation
@@ -43,25 +43,36 @@ endif()
 
 
 if(WIN32)
-  set( CMAKE_CXX_FLAGS "-D_SCL_SECURE_NO_WARNINGS /INCREMENTAL:NO" )
+  if(MSVC)
+    set( CMAKE_CXX_FLAGS "-D_SCL_SECURE_NO_WARNINGS /INCREMENTAL:YES /EHsc" )
+  endif()
 
   include_directories( 3dyne_extlibs/jpeg-6b 3dyne_extlibs/bzip2-1.0.6 3dyne_extlibs/SDL-1.2.15/include )
   #if( ${SDL_ROOT} )
    # include_directories( ${SDL_ROOT}/include )
-  #  LINK_DIRECTORIES( ${SDL_ROOT}/lib/x86 )	
+  #  LINK_DIRECTORIES( ${SDL_ROOT}/lib/x86 )
   #endif()
 
-  add_definitions( -Dwin32_x86 -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="win32.x86") 
-  
+  IF( NOT BOOST_ROOT)
+    set(BOOST_ROOT C:\\src\\boost_1_48_0)
+  ENDIF()
+  include_directories( ${BOOST_ROOT} )
+
+  #add_definitions( -Dwin32_x86 -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="win32.x86" )
+  add_definitions( -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="win32.x86" )
+
   #set( SS_SRC r_wgl.cpp i_win32.cpp wgl_service.cpp i_vkmap.cpp )
   set( SS_SRC r_sdl )
+  file(GLOB ALL_HEADERS *.h shared/*.h r_fake/*.h )
+
 else()
 
-  add_definitions( -Dlinux_i386 -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="linux.i386") 
+  add_definitions( -Dlinux_i386 -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="linux.i386")
   set( CMAKE_CXX_FLAGS "-Wall" )
-  
+
 #   set( SS_SRC r_glx.cpp i_x11.cpp glx_service.cpp )
   set( SS_SRC r_sdl )
+  set( ALL_HEADERS )
 endif()
 
 
@@ -69,7 +80,7 @@ endif()
 include_directories( shared . r_fake r_gen_gl)
 
 
-#add_definitions( -Dlinux_i386 -D__USE_IBASE -DS_INGAME ) 
+#add_definitions( -Dlinux_i386 -D__USE_IBASE -DS_INGAME )
 
 # add_definitions( -DBHOSTSYSTEM=xxx -DBDATE=yyy -DBHOST=zzz -DBVERSION=000 -DDD_BTYPE=debug -DBCOMMENT="wooooot!!!11" )
 
@@ -150,7 +161,7 @@ set( ENGINE_SRC g_main.cpp
 	tfunc.cpp
 	l_wrap.cpp
 	)
-	
+
 set( R_FAKE_SRC r_fake/g_blockmap.cpp
 	r_fake/g_bmlink.cpp
 	r_fake/g_bmobjects.cpp
@@ -184,8 +195,8 @@ set( R_FAKE_SRC r_fake/g_blockmap.cpp
 	r_fake/J_EnvMap.cpp
 	r_fake/J_DetailMap.cpp
 	r_fake/J_SurfaceDeform.cpp )
-	
-	
+
+
 set( R_GEN_GL_SRC r_gen_gl/r_real.cpp
 	r_gen_gl/shape_instance.cpp
 	r_gen_gl/shape_util.cpp
@@ -208,13 +219,13 @@ set( R_GEN_GL_SRC r_gen_gl/r_real.cpp
 	)
 
 
-add_executable( dd ${ENGINE_SRC} ${R_FAKE_SRC} ${R_GEN_GL_SRC} ${SS_SRC} ) 
+add_executable( dd ${ENGINE_SRC} ${R_FAKE_SRC} ${R_GEN_GL_SRC} ${SS_SRC} ${ALL_HEADERS} )
 #target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 )
 add_executable( disk_hash disk_hash.cpp )
 
 if(WIN32)
-  
-  target_link_libraries( dd jpeg bz2 ws2_32 opengl32 winmm SDL  )
+  add_executable( colrm_dh colrm_dh.cpp )
+  target_link_libraries( dd jpeg bz2 ws2_32 opengl32  SDL winmm )
 else()
   target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 GL )
 endif()
