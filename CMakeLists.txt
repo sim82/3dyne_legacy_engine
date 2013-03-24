@@ -67,7 +67,7 @@ if(WIN32)
 
 else()
 
-  add_definitions( -Dlinux_i386 -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="linux.i386")
+  add_definitions( -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="linux.i386")
   set( CMAKE_CXX_FLAGS "-Wall" )
 
 #   set( SS_SRC r_glx.cpp i_x11.cpp glx_service.cpp )
@@ -88,7 +88,9 @@ include_directories( shared . r_fake r_gen_gl)
 
 
 
-set( ENGINE_SRC g_main.cpp
+set( ENGINE_SRC 
+    shared/log.cpp
+    g_main.cpp
 	la_service.cpp
 	la_varviews.cpp
 	g_resources.cpp

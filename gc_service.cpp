@@ -1143,7 +1143,7 @@ void GC_NetCloseLocalPort( gc_state_t *state )
 		__error( "expected gcUdpState_is_init\n" );
 
 	
-#if D3DYNE_OS_WIN
+#if D3DYNE_OS_UNIXLIKE
 	res = close( state->local_sock );
 #else
 	res = closesocket( state->local_sock );

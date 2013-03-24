@@ -393,7 +393,7 @@ void LA_DrawGltexByName( const char *resname, int x, int y, int width, int heigh
 	
 	TFUNC_ENTER;
 	
-	r = G_ResourceSearch( g_rs, resname );
+	//r = G_ResourceSearch( g_rs, resname );
 
 	gltex = (res_gltex_cache_t *) r->res_cache;
 
