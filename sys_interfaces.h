@@ -38,6 +38,7 @@
 
 #ifndef sys_interfaces_h
 #define sys_interfaces_h
+#include "compiler_config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,10 +48,10 @@
 
 
 // let's get the access function
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 	#include <unistd.h>
 	#include <alloca.h>
-#elif defined(win32_x86)
+#elif D3DYNE_OS_WIN
 	#include <io.h> // this seems to be ok for Xmingw32 an vc
 
 #endif

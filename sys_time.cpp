@@ -35,17 +35,17 @@
 // sys_time.c
 
 // support.c
+#include "compiler_config.h"
 
 
-
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 #include <sys/time.h>
 #include <signal.h>
 #include <errno.h>
 #include <time.h>
 void SYS_TimerCallback(int);
 
-#elif defined(win32_x86)
+#elif D3DYNE_OS_WIN
 #include <sys/timeb.h>
 #include <windows.h>
 #if 0
@@ -108,30 +108,7 @@ usec_t DiffTimeval( timeval_t* now_ptr, timeval_t* past_ptr) {
 
 void SYS_TimerStart( unsigned int diff, void (*handler)())
 {
-#if 0
-#if defined(linux_i386) || defined(irix_mips)
-	
-	struct itimerval value;
-	__named_message( "starting timer\n" );
-	value.it_interval.tv_sec = 0;
-	value.it_interval.tv_usec = diff;
-	
-	value.it_value.tv_sec = 0;
-	value.it_value.tv_usec = diff;
 
-	signal( SIGALRM, SYS_TimerCallback );
-	setitimer( ITIMER_REAL, &value, NULL);
-
-#elif defined(win32_x86)
-	timerid = SetTimer( NULL, 0, diff / 1000, SYS_TimerCallback );
-	if( !timerid)
-	{
-		__error( "timerid = 0\n" );
-	}	
-#endif
-
-	TimerCallback = handler;
-#endif
 }
 
 unsigned int SYS_GetMsec()
@@ -139,7 +116,7 @@ unsigned int SYS_GetMsec()
 	static unsigned int	msecs_base = 0;
 	unsigned int	msecs = 0;
 
-#if defined (linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 	timeval_t	tv_now;
 
 
@@ -152,7 +129,7 @@ unsigned int SYS_GetMsec()
        
 	msecs = tv_now.tv_usec / 1000 + (tv_now.tv_sec - msecs_base) * 1000;
 
-#elif defined(  win32_x86 )
+#elif D3DYNE_OS_WIN
 	msecs = timeGetTime();  // windows: 12 points
 #endif
 	return msecs;
@@ -162,14 +139,14 @@ unsigned int SYS_GetSec()
 {
 	unsigned int	time;
 	
-#if defined (linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 	timeval_t	tv_now;
 
 	gettimeofday( &tv_now, 0 );
 
 	time = tv_now.tv_sec;
 
-#elif defined( win32_x86 )
+#elif D3DYNE_OS_WIN
 	time = SYS_GetMsec() / 1000; // todo: we need an absolute date.
 #endif
 
@@ -184,7 +161,7 @@ void SYS_SleepMsec( int msec )
 	int	waserror;
 	struct timeval	tv;
 	
-#if defined (linux_i386)
+#if D3DYNE_OS_UNIXLIKE
 	tv.tv_sec = msec / 1000;
 	tv.tv_usec = (msec%1000)*1000;
 
@@ -193,7 +170,7 @@ void SYS_SleepMsec( int msec )
 		errno = 0;
 		waserror = select( 0, NULL, NULL, NULL, &tv );
 	} while( waserror && (errno == EINTR ) );
-#elif defined (win32_x86)
+#elif D3DYNE_OS_WIN
 	Sleep( msec );
 #else
 #error SYS_Sleep not implemented on this system
@@ -202,7 +179,7 @@ void SYS_SleepMsec( int msec )
 
 
 
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 void SYS_TimerCallback( int )
 {
 	signal( SIGALRM, SYS_TimerCallback );
@@ -210,7 +187,7 @@ void SYS_TimerCallback( int )
 	TimerCallback();
 }
 
-#elif defined(win32_x86)
+#elif D3DYNE_OS_WIN
 void SYS_TimerCallback( HWND bla1, UINT bla2, UINT arg_eventid, DWORD bla3 )
 {
 	__named_message( "here!\n" );

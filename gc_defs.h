@@ -42,7 +42,7 @@
 #include "g_defs2.h"		// g_server_t, g_client_t 
 
 #include "lib_queuedefs.h"
-#if !defined( win32_x86 )
+#if D3DYNE_OS_UNIXLIKE
 #include <sys/types.h>                                                          
 #include <sys/socket.h>                                                         
 #include <netinet/in.h>                                                         

@@ -39,6 +39,7 @@
 //#include <alloca.h>
 #include <string.h>
 #include <vector>
+#include <stdexcept>
 
 #include "ib_service.h"
 #include "res_gltex.h"
@@ -80,13 +81,15 @@ typedef struct my_error_mgr {
 typedef my_source_mgr *my_src_ptr;
 
 
+
+
 // I do this with the jpeglib style, although I don't really know, what I am doing.
 
 METHODDEF( void )init_source( j_decompress_ptr cinfo )
 {
 	// what the hell are they doing in jdatasrc.c?
 }
-
+#if 0
 METHODDEF( boolean )fill_input_buf( j_decompress_ptr cinfo )
 {
 	my_src_ptr	src = (my_src_ptr) cinfo->src;
@@ -107,7 +110,6 @@ METHODDEF( boolean )fill_input_buf( j_decompress_ptr cinfo )
 	for( i = 0; i < INPUT_BUF_SIZE; i++ )
 	{
 		c = IB_GetChar( src->h );
-
 
 //		printf( "%d\n", c );
 		if( c == EOF )
@@ -180,13 +182,55 @@ void jpeg_ibase_src( j_decompress_ptr cinfo, ib_file_t *h )
 	src->pub.next_input_byte = NULL; /* until buffer loaded */
 
 }      
+#else
+
+// new simplified jpeg_source_mgr: assume that we read from a single buffer (possibly memory mapped)
+typedef std::pair<jpeg_source_mgr, const char *> ptr_pair_type;
+
+METHODDEF( boolean )fill_input_buf( j_decompress_ptr cinfo )
+{
+	// huge ansi-c pseudo polymorphism brainfuck: interpret cinfo->src as a pair, so that we can access the glued-on buffer end pointer
+	ptr_pair_type *ptr_pair = (ptr_pair_type*) cinfo->src;
+
+	int	num, i, c;
+
+	__named_message( "\n" );
+	
+	ptr_pair->first.bytes_in_buffer = std::distance( (const char *)ptr_pair->first.next_input_byte, ptr_pair->second );
+	return TRUE;
+}	
+
+METHODDEF( void ) skip_input_data( j_decompress_ptr cinfo, long num )
+{
+// 	int	i;
+	// huge ansi-c pseudo polymorphism brainfuck: interpret cinfo->src as a pair, so that we can access the glued-on buffer end pointer
+	ptr_pair_type *ptr_pair = (ptr_pair_type*) cinfo->src;
+
+
+	size_t left = std::distance( (const char *)ptr_pair->first.next_input_byte, ptr_pair->second );
+
+	num = std::min( size_t(num), left );
+
+	ptr_pair->first.next_input_byte += num;
+	ptr_pair->first.bytes_in_buffer = left - num;
+
+}
+
+METHODDEF( void ) term_source( j_decompress_ptr cinfo )
+{
+}
+#endif
+
 
 static void jpeg_error_exit( j_common_ptr cinfo)
 {
 	my_error_ptr myerr = (my_error_ptr) cinfo->err;
-	(*cinfo->err->output_message) (cinfo);
-    __error( "jpeg error\n" );
-	//longjmp (myerr->setjmp_buffer, 1);
+	char buffer[JMSG_LENGTH_MAX];
+	jpeg_destroy(cinfo);
+
+  /* Create the message */
+	(*cinfo->err->format_message) (cinfo, buffer);
+	throw std::runtime_error( buffer );
 }
 
 void Res_CreateGLTEX_rgb( int width, int height, unsigned char *color_buf );
@@ -194,7 +238,7 @@ res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
 {
 	struct jpeg_decompress_struct cinfo;
 
-	ib_file_t	*h;
+
 	unsigned char *buffer;
 	int row_stride;
 	struct my_error_mgr jerr;
@@ -205,98 +249,78 @@ res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
 	res_gltex_cache_t		*gltex;
 	
 
-	h = IB_Open( reg->path );
-//	b = fopen( "test.jpg", "rb" );
-
-	if( !h )
+    ibase::file_handle h(reg->path);
+	if( !h.is_open() )
 	{
 		__error( "load of '%s' failed\n", reg->path );
 	}
-
+	ibase::file_handle::mapping m(h);
 //	memset( &cinfo, 0, sizeof( struct jpeg_decompress_struct ));
 
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = jpeg_error_exit;
-#if 0
-	if (setjmp (jerr.setjmp_buffer))                                              
-	{
 
-		jpeg_destroy_decompress (&cinfo);
-		if( h )
-			IB_Close( h );
-		__error( "XJT: JPEG load error\n");
-	       
-	}
-#endif
+	try {
 
+		printf( "%p\n", cinfo.err );
+		// step 1
 
-	printf( "%p\n", cinfo.err );
-
-
-	// step 1
-
-	jpeg_create_decompress(&cinfo);	
-//	cinfo.err = jpeg_std_error (&jerr.pub);                                       
-//	printf( "%p\n", cinfo.err );
-
-	// step 2
-	jpeg_ibase_src(&cinfo, h);
-//	jpeg_stdio_src( &cinfo, b );
-
-//	printf( "back\n" );
+		jpeg_create_decompress(&cinfo);	
 	
-	// step 3
-	jpeg_read_header(&cinfo, TRUE);
+        // set up the 'jpeg_source_mgr' contraption: the ptr_pair_type is used to 'glue on' a buffer end pointer after the jpeg_source_mgr struct.
+		ptr_pair_type pp;
 
-
-/*
-	if( cinfo.jpeg_color_space != JCS_RGB )
-	{
-		__error( "colorspace is not RGB\n" );
-	}
-*/
-
-
-	jpeg_start_decompress( &cinfo );
-//	printf( "jpeg: %d %d %d\n", cinfo.image_width, cinfo.image_height, cinfo.output_components );
-	if( cinfo.output_components != 3 )
-	{
-		__error( "jpeg file '%s' is not RGB\n", reg->path );
-	}
-
-	pixels = cinfo.output_width * cinfo.output_height;
-	image = (unsigned char *)MM_Malloc( pixels * 3 );
-       
-
-
-	row_stride = cinfo.output_width * 3;
-
-	ptr = image + ( row_stride * (cinfo.output_height - 1) );
-
-	std::vector<unsigned char>buffer_data( row_stride );
-	buffer = buffer_data.data();
-	//buffer = (unsigned char *)alloca( row_stride );
-
-//	printf( "row_stride: %d\n", row_stride );
-
-       
-
-	while( cinfo.output_scanline < cinfo.output_height )
-	{
-//		__named_message( "%d\n", cinfo.output_scanline );
-		jpeg_read_scanlines( &cinfo, &buffer, 1 ); 
+        pp.first.init_source = init_source;
+		pp.first.fill_input_buffer = fill_input_buf;
+		pp.first.skip_input_data = skip_input_data;
+		pp.first.resync_to_restart = jpeg_resync_to_restart; /* use default method */ 
+		pp.first.term_source = term_source;
 	
-		memcpy( ptr, buffer, row_stride );
+		size_t file_size = h.get_size();
+		pp.first.bytes_in_buffer = file_size; 
+		pp.first.next_input_byte = (const JOCTET *)(m.ptr()); 
+		pp.second = (const char *)pp.first.next_input_byte + file_size;
 		
-		ptr -= row_stride;
+		// huge ansi-c pseudo polymorphism brainfuck: cinfo.src is actually a pair (i.e., we glue to the buffer end pointer after the jpeg_src_mgr struct)
+		cinfo.src = &pp.first; 
+	
+		jpeg_read_header(&cinfo, TRUE);
 
+		jpeg_start_decompress( &cinfo );
+	//	printf( "jpeg: %d %d %d\n", cinfo.image_width, cinfo.image_height, cinfo.output_components );
+		if( cinfo.output_components != 3 )
+		{
+			__error( "jpeg file '%s' is not RGB\n", reg->path );
+		}
+
+		pixels = cinfo.output_width * cinfo.output_height;
+		image = (unsigned char *)MM_Malloc( pixels * 3 );
+
+		row_stride = cinfo.output_width * 3;
+
+		ptr = image + ( row_stride * (cinfo.output_height - 1) );
+
+		std::vector<unsigned char>buffer_data( row_stride );
+		buffer = buffer_data.data();
+    
+
+		while( cinfo.output_scanline < cinfo.output_height )
+		{
+	//		__named_message( "%d\n", cinfo.output_scanline );
+			jpeg_read_scanlines( &cinfo, &buffer, 1 ); 
+	
+			memcpy( ptr, buffer, row_stride );
+		
+			ptr -= row_stride;
+
+		}
+
+		jpeg_finish_decompress( &cinfo );
+		jpeg_destroy_decompress( &cinfo );
+	} catch( std::runtime_error x ) {
+		__error( "jpeg error caught: %s\n", x.what() );
 	}
-
-//	memset( image, 0, pixels *3 );
-
-	jpeg_finish_decompress( &cinfo );
-	jpeg_destroy_decompress( &cinfo );
-	IB_Close( h );
+	
 
 	gltex = NEWTYPE( res_gltex_cache_t );
 	gltex->width = cinfo.output_width;

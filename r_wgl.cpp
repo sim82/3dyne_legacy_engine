@@ -205,7 +205,7 @@ void R_StartUp( void )
 {
 #if 1
 
-#ifdef linux_i386
+#if D3DYNE_OS_UNIXLIKE && D3DYNE_CPU_X86 && D3DYNE_MM_32
 	asm( "movl %esp, _testvar\n" );
 	fprintf( stderr, "esp: %x\n", testvar );
 #endif

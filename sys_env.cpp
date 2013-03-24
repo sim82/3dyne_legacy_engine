@@ -33,12 +33,13 @@
 
 
 // sys_env.c
+#include "compiler_config.h"
 
-#if defined( linux_i386 )  || defined( irix_mips )
+#if D3DYNE_OS_UNIXLIKE
 	#include <unistd.h>
 	#include <sys/types.h>
 	#include <sys/stat.h>
-#elif defined ( win32_x86 )
+#elif D3DYNE_OS_WIN
 	#include <sys/stat.h> // cygnus
 	#include <sys/types.h>
 	#include <windows.h> // for WinMain
@@ -52,12 +53,12 @@ int		g_ncmdshow;
 static char 	text[128];
 
 
-#if defined( linux_i386 ) || defined( irix_mips ) || defined( win32_x86 )
+
 int main( int argc, char *argv[] )
 {
     int	ret;
     
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
     _chdir("E:\\src\\3dyne_legacy_devel_exec");
 #endif
     ret = g_main( argc, argv );
@@ -65,26 +66,12 @@ int main( int argc, char *argv[] )
 }
 
 
-#elif defined( win32_x86 )
-
-static const char	*faked_argv[] = {"DarkestDays"};
-int APIENTRY WinMain( HINSTANCE hCurrentInst,
-		      HINSTANCE hPreviousInst,
-		      LPSTR lpszCmdLine,
-		      int nCmdShow)
-
-{
-	g_wininstance = hCurrentInst;
-	g_ncmdshow = nCmdShow;
-	g_main( 1, const_cast<char **>(faked_argv) );
-}
-#endif
 
 char *SYS_GetPADir()
 {
 	char	*ptr;
 	
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 	ptr = getenv( "HOME" );
 	__chkptr( ptr );
 	
@@ -93,7 +80,7 @@ char *SYS_GetPADir()
 	strcat( text, "/.DarkestDays" );
 	mkdir( text, 511 );
 
-#elif defined (win32_x86)
+#elif D3DYNE_OS_WIN
 	memset( text, 0, 128 );
 	strcat( text, "./" ); // I hope win32 likes that
 #endif
@@ -104,13 +91,13 @@ char *SYS_GetPADir()
 char *SYS_GetPGDir( char *padir )
 {
 	
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 	memset( text, 0, 128 );
 	strcat( text, padir );
 	strcat( text, "/" );
 	strcat( text, ( SHP_GetVar( "game" ))->string );
 	mkdir( text, 511 );
-#elif defined (win32_x86)
+#elif D3DYNE_OS_WIN
 	memset( text, 0, 128 );
 	strcat( text, padir );
 	strcat( text, "/" );

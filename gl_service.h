@@ -37,12 +37,13 @@
 
 #ifndef gl_service_h
 #define gl_service_h
+#include "compiler_config.h"
 
 #include "gl_defs.h"
 
 void GL_GetInfo( gl_info_t *info );
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
   #include <Windows.h>
 #endif
 

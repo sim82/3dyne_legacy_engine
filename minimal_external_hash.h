@@ -27,8 +27,9 @@
 #include <vector>
 #include <iterator>
 #include <stdexcept>
+#include "compiler_config.h"
 
-#ifndef win32_x86
+#if D3DYNE_OS_UNIXLIKE
 #include <unistd.h>
 #include <sys/mman.h>
 #else
@@ -37,7 +38,7 @@
 #endif
 
 namespace meh {
-#ifndef win32_x86
+#if D3DYNE_OS_UNIXLIKE
 class mapped_file {
 public:
     mapped_file( const char *filename, bool read_write )

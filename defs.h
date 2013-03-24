@@ -37,6 +37,7 @@
 // include all *def headers
 #ifndef __defs_h
 #define __defs_h
+#include "compiler_config.h"
 #include "a_shared.h"
 
 #include "sys_defs.h"

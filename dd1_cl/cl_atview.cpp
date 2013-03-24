@@ -33,6 +33,7 @@
 
 
 // cl_atview.c
+#include "compiler_config.h"
 
 #include "cl_state.h"
 #include "cl_head.h"
@@ -44,7 +45,7 @@
 
 #include "hud_player.h"
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
 #include <stdlib.h>
 //static float randomf() {
 //  return float(rand()) / RAND_MAX;

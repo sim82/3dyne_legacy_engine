@@ -30,7 +30,7 @@
  *     Simon Berger (simberger@gmail.com) - initial API and implementation
  */
 
-
+#include "compiler_config.h"
 
 // main.c
 #include <stdio.h> 
@@ -105,13 +105,13 @@ void ShockHandler()
 //	raise( SIGTERM );
 
 	SYS_CloseConsole();
-#ifdef win32_x86
-    _asm{ int 3 }
+#if D3DYNE_OS_WIN
+  //  _asm{ int 3 }
 #endif
 	exit( -1 );
 }
 
-#if defined( win32_x86 )
+#if D3DYNE_OS_WIN
 //typedef LONG (WINAPI *PTOP_LEVEL_EXCEPTION_FILTER)(
 //    _In_ struct _EXCEPTION_POINTERS *ExceptionInfo
 //    );
@@ -120,7 +120,7 @@ LONG WINAPI win32Exception( struct _EXCEPTION_POINTERS *einfo )
 {
 	__warning( "unhandled exception\n" );
 	printf( "exception code: 0x%x\n", einfo->ExceptionRecord->ExceptionCode );
-    _asm{ int 3 }
+//    _asm{ int 3 }
 #ifdef trace_functions
 	{
 		char	funcname[512];
@@ -147,8 +147,8 @@ void SecureShutDown( int sig )
 	}
 	__named_message( "\n" );
 	__error( "fatal signal %d caught.\n", sig );
-#ifdef win32_x86
-    _asm{ int 3 }
+#if D3DYNE_OS_WIN
+//    _asm{ int 3 }
 #endif
 //	kill( getpid(), 9 );
 
@@ -426,7 +426,7 @@ int g_main( int argc, char* argv[] )
 //        signal( SIGQUIT, (void(*) ()) SecureShutDown );
 	signal( SIGINT,  (void(*) (int)) SecureShutDown );
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
 	LPTOP_LEVEL_EXCEPTION_FILTER xxx;
 
 	//SetUnhandledExceptionFilter( win32Exception );

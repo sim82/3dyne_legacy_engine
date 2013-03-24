@@ -38,7 +38,7 @@
 
 #ifndef sys_env_h
 #define sys_env_h
-
+#include "compiler_config.h"
 
 
 // create and return private Tgfkaa directory

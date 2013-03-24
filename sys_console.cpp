@@ -34,14 +34,14 @@
 
 // sys_console
 
-
+#include "compiler_config.h"
 #include <interfaces.h>
 
 #include <sys_console.h>
 
 // ======================================================================
 // unix shell:
-#if defined ( linux_i386 )
+#if D3DYNE_OS_UNIXLIKE
 // is this right?
 #define STDIN_FD        0
 static int      stdin_isup = 0;
@@ -90,7 +90,7 @@ void SYS_CloseConsole()
 {
 }
 
-#elif defined( win32_x86 )
+#elif D3DYNE_OS_WIN
 
 static FILE	*outfile = NULL;
 static int	badoutfile = 0;

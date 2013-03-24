@@ -33,20 +33,20 @@
 
 
 // sys_dll.c
-
+#include "compiler_config.h"
 #define	SYS_DLL_MAXOPEN	( 8 )
 
 // test
 
 
-#if defined( linux_i386 ) || defined( irix_mips )
+#if D3DYNE_OS_UNIXLIKE
 	#include <dlfcn.h>
 
 	#define SYS_DLLSUFFIX	".so"
 
 	static void* h[SYS_DLL_MAXOPEN];
 
-#elif defined( win32_x86 )
+#elif D3DYNE_OS_WIN
 	#include <windows.h>
 	#define SYS_DLLSUFFIX	".dll"
 	static HMODULE	h[SYS_DLL_MAXOPEN];
@@ -84,7 +84,7 @@ int SYS_DllBegin( const char* dll_name )
 	int	i;
 
 	char	sys_dll[256];
-#if defined(win32_x86)
+#if D3DYNE_OS_WIN
 	char	errbuf[512];
 #endif 
 		
@@ -104,7 +104,7 @@ int SYS_DllBegin( const char* dll_name )
 		
 	
 		
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 // =======================================
 	sprintf( sys_dll, "%s", dll_name );
 
@@ -113,7 +113,7 @@ int SYS_DllBegin( const char* dll_name )
 		__error( "dlopen failed to open '%s' with the following message:\n\"%s\"\n", sys_dll, dlerror() );
 	
 	
-#elif defined(win32_x86)
+#elif D3DYNE_OS_WIN
 // =======================================
 	// todo: test me!
 	sprintf( sys_dll, "%s", dll_name );
@@ -146,13 +146,13 @@ void * SYS_DllSym( int hi, const char* arg_name )
 		__error( "dll handle not valid\n" );
 	}
 
-#if defined(linux_i386) || defined(irix_mips)
+#if D3DYNE_OS_UNIXLIKE
 // =======================================
 	ptr = dlsym( h[hi], arg_name );
 //	__chkptr( ptr );
 	
 	
-#elif defined( win32_x86 )
+#elif D3DYNE_OS_WIN
 // =======================================
 	ptr = ( void * )GetProcAddress((HMODULE)h[hi], arg_name );
 //	__chkptr( ptr );
@@ -170,12 +170,12 @@ void SYS_DllEnd( int hi )
 		return;
 	}
 
-#if defined( linux_i386 ) || defined( irix_mips )
+#if D3DYNE_OS_UNIXLIKE
 // =======================================
 	__chkptr( h[hi] );
 	dlclose( h[hi] );
 	
-#elif defined(win32_x86)
+#elif D3DYNE_OS_WIN
 // =======================================
 	// todo: impement me!
 	FreeLibrary( (HMODULE)h[hi] );

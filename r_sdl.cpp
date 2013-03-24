@@ -4,7 +4,7 @@
 #include "r_private.h"
 #include "r_interface.h"
 
-#ifdef win32_x86
+#if D3DYNE_OS_WIN
 #include <SDL.h>
 #else
 #include <SDL/SDL.h>
