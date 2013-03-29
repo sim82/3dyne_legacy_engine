@@ -705,6 +705,9 @@ void manager::init_from_res_obj ( hobj_t* hobj )
     res_.insert ( std::make_pair ( std::string ( name->value ), r ) );
 
 }
+
+// void bake_hobj( hobj_t *o );
+
 void manager::init_from_res_file ( const char* name )
 {
     tokenstream_t   *ts;
@@ -726,6 +729,8 @@ void manager::init_from_res_file ( const char* name )
     for ( ; ( resobj = ( SearchGetNextClass ( &iter ) ) ) ; ) {
         init_from_res_obj ( resobj );
     }
+    
+    
 }
 
 manager::scope_internal::~scope_internal()

@@ -54,6 +54,7 @@
 #include "la_service.h"
 
 #include "db_lightmap.h"
+#include "interfaces.h"
 #include "shock.h"
 
 static bool_t	db_internal_init = false;
@@ -118,6 +119,7 @@ void LightmapDB_Init( db_lightmap_t *db )
 
 }
 #endif
+
 
 
 lightmap_db_cpp::lightmap_db_cpp( const char* lightmap_bin_name, const char* lightmap_class_name, const char* source_class_name ) 
@@ -204,6 +206,8 @@ lightmap_db_cpp::lightmap_db_cpp( const char* lightmap_bin_name, const char* lig
     }
     EndTokenStream( ts );
 
+    
+    bake_hobj( lightmap_root );
     
     InitClassSearchIterator( &iter, lightmap_root, "*" );
     for ( ; ( lightmap = SearchGetNextClass( &iter ) ) ; )

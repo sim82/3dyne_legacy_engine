@@ -656,7 +656,7 @@ int g_main( int argc, char* argv[] )
 #endif
 
     DD_LOG << "test log\n";
-    __error("");
+//    __error("");
 	GC_MainLoop();  // no return
 
 	TFUNC_LEAVE;

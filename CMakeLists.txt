@@ -162,6 +162,7 @@ set( ENGINE_SRC
 	u_mempack.cpp
 	tfunc.cpp
 	l_wrap.cpp
+	baked_hobj.cpp
 	)
 
 set( R_FAKE_SRC r_fake/g_blockmap.cpp

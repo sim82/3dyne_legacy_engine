@@ -97,5 +97,6 @@
 #include "lib_model.h"
 #include "g_model.h"
 
+void bake_hobj( hobj_t *o );
 
 #endif
