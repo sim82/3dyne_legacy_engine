@@ -37,6 +37,7 @@
 #ifndef __res_gltexdefs
 #define __res_gltexdefs
 
+
 #include "lib_hobjdefs.h"
 
 typedef struct res_gltex_register_s
@@ -58,4 +59,27 @@ typedef struct res_gltex_cache_s
 	int	texobj;
 	resGltexComponents	comp;
 } res_gltex_cache_t;
+
+
+namespace g_res {
+    
+namespace tag {
+    class gltex;
+}
+    
+template<typename TAG>
+class traits;
+
+    
+template<>
+class traits<tag::gltex> {
+public:
+    typedef res_gltex_register_t reg_state;
+    typedef res_gltex_cache_t cache_state;
+    
+    const static size_t id = 1;
+    const static char *name;// = "gltex";
+};
+}
+
 #endif

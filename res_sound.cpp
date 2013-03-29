@@ -211,3 +211,15 @@ void Res_UncacheSound( g_resource_t *res )
 {
 	__named_message( "doing nothing.\n" );
 }
+namespace g_res
+{
+namespace loader
+{
+res* sound::make ( hobj_t* obj )
+{
+    return new res_impl<tag::sound>();
+    
+}
+}
+}
+

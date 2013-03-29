@@ -1018,3 +1018,101 @@ void Res_UncacheGLTEX( g_resource_t *res )
 {
 	printf( "Res_UncacheGLTEX: do nothing\n" );
 }
+
+#if 1
+namespace g_res {
+const char *traits<tag::gltex>::name = "gltex";
+    
+    
+
+
+namespace loader
+{
+    
+    
+res* gltex::make ( hobj_t* resobj ) {
+    res_impl<tag::gltex> *r = new res_impl<tag::gltex>();
+    
+    hpair_t     *name;
+    hpair_t     *path;
+
+    name = FindHPair( resobj, "name" );
+    if ( !name )
+        return NULL;
+
+    path = FindHPair( resobj, "path" );
+    if ( !path )
+        return NULL;
+
+    
+    r->rs_ = Res_SetupRegisterGLTEX( path->value );
+    
+    // hack:
+    r->rs_->resobj = resobj;
+
+    return r;
+}
+    
+void gltex::unmake ( res* r ) {
+    res_impl< tag::gltex >* res_gltex = safe_cast<tag::gltex>(r);
+    
+    free( res_gltex->rs_ );
+    res_gltex->rs_ = 0;
+    delete r;
+}
+void gltex::cache ( res* r ) {
+//     if( r->type_id() != traits<tag::gltex>::id ) {
+//         __error( "type chaos: res->type_id() != traits<tag::gltex>::id\n" );
+//     }
+//     
+//     res_impl<tag::gltex> *res_gltex = static_cast<res_impl<tag::gltex> *>(r);
+    
+    
+    res_impl< tag::gltex >* res_gltex = safe_cast<tag::gltex>(r);
+    
+    
+    GLuint          texobj;
+    
+    
+
+    
+
+    texobj = CreateTexObject( res_gltex->rs_->resobj );
+
+    if ( strstr( res_gltex->rs_->path, ".tga" ) )
+    {       
+        res_gltex->cs_ = Res_CacheInGLTEX_tga( res_gltex->rs_ );
+    }
+    else if ( strstr( res_gltex->rs_->path, ".arr" ) )
+    {
+        res_gltex->cs_ = Res_CacheInGLTEX_arr( res_gltex->rs_ );
+    }   
+    else if ( strstr( res_gltex->rs_->path, ".jpg" ) )
+    {
+        res_gltex->cs_ = Res_CacheInGLTEX_jpg( res_gltex->rs_ );
+    }   
+    else
+    {
+        __error( "can't recognize image file format of '%s'\n", res_gltex->rs_->path );
+    }
+
+    res_gltex->cs_->texobj = texobj;
+    
+    
+    
+}
+void gltex::uncache ( res *r ) {
+    __named_message( "leaking gl resources!!!\n" );
+    res_impl< tag::gltex >* res_gltex = safe_cast<tag::gltex>(r);
+    
+    free( res_gltex->cs_ );
+    res_gltex->cs_ = 0;
+}
+} // namespace loader
+
+
+
+
+    
+} // namespace g_res
+#endif

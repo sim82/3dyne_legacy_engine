@@ -33,6 +33,7 @@
 
 
 // g_resources.c
+#include <iostream>
 
 #include "interfaces.h"
 #include "defs.h"
@@ -58,6 +59,9 @@ int KeyCompare_c_string( const void *res1_key, const void *res2_key )
 	return strcmp( (char*)(res1_key), (char*)(res2_key) );
 }
 
+
+g_res::manager *g_mgr_nt = 0;
+
 /*
   ==============================
   G_NewResources
@@ -73,6 +77,10 @@ g_resources_t * G_NewResources( void )
 	U_InitMap( res->res_map = NEWTYPE( u_map_t ), map_default, KeyCompare_c_string, GetKey_resource );
 	U_InitMap( res->type_map = NEWTYPE( u_map_t ), map_default, KeyCompare_c_string, GetKey_res_type );
 
+    if( g_mgr_nt == 0 ) {
+        g_mgr_nt = new g_res::manager();
+    }
+    
 	return res;
 }
 
@@ -352,7 +360,7 @@ bool_t G_ResourceCheck( g_resources_t *res, char *name )
 */
 g_resource_t * G_ResourceSearch( g_resources_t *res, const char *name )
 {
-	g_resource_t	*r;
+    g_resource_t	*r;
 	g_res_type_t	*rt;
 
 	r = (g_resource_t*)U_MapSearch( res->res_map, name );
@@ -383,6 +391,7 @@ g_resource_t * G_ResourceSearch( g_resources_t *res, const char *name )
 		if ( r->state != G_RESOURCE_STATE_CACHED )
 			__error( "caching of resource '%s' failed\n", name );		
 	}
+
 
 	return r;
 }
@@ -656,22 +665,11 @@ void G_ResourcesForEach( g_resources_t *res, void (*action_func)(g_resource_t *r
 
 namespace g_res
 {
-const char *traits<tag::gltex>::name = "gltext";
+
 const char *traits<tag::sound>::name = "sound";
+const char *traits<tag::lump>::name = "lump";
 
-namespace resource
-{
-    size_t gltex::type_id() const
-    {
-        return traits<tag::gltex>::id;
-    }
-    
-    size_t sound::type_id() const
-    {
-        return traits<tag::gltex>::id;
-    }
 
-} // namespace resource
 
 
 void manager::init_from_res_obj ( hobj_t* hobj )
@@ -681,9 +679,16 @@ void manager::init_from_res_obj ( hobj_t* hobj )
         return;
     }
 
+    std::cout << "name: " << hobj->name << "\n";
+    
     size_t lid = loader_id ( hobj->name );
-    assert ( lid != size_t ( -1 ) );
+    //assert ( lid != size_t ( -1 ) );
 
+    if( lid == size_t(-1) ) {
+        std::cout << "resource type " << hobj->name << " not registered\n";
+        return;
+    }
+    
 
     hpair_t *name = FindHPair ( hobj, "name" );
     if ( !name ) {
@@ -700,7 +705,7 @@ void manager::init_from_res_obj ( hobj_t* hobj )
         return;
     }
 
-    resource::base *r = loader_[lid]->make ( hobj );
+    res *r = loader_[lid]->make ( hobj );
 
     res_.insert ( std::make_pair ( std::string ( name->value ), r ) );
 
@@ -733,19 +738,91 @@ void manager::init_from_res_file ( const char* name )
     
 }
 
-manager::scope_internal::~scope_internal()
+
+manager& manager::get_instance()
 {
-    if( mgr_ == 0 ) {
-        return;
-    }
-        
+    assert( g_mgr_nt != 0 );
+    return *g_mgr_nt;
     
-    while ( !list_.empty() ) {
-       
-        mgr_->uncache ( &list_.front() );
-        list_.pop_front();
+}
+res* manager::get_unsafe ( const char* name )
+{
+    res_map::iterator it = res_.find ( std::string ( name ) );
+
+    if ( it == res_.end() ) {
+        std::cout << "resource not found: " << name << "\n";
+        return 0;
+    }
+    res *res = it->second;
+
+    if( res->cached() ) {
+        if( !res->is_linked() ) {
+            __warning( "resource cached but not linked!\n" );
+        }
+    } else {
+        if ( loader_[res->type_id()] != 0 ) {
+            loader_[res->type_id()]->cache( res );
+            //res->cached( true );
+            
+            if( !res->is_linked() ) {
+                scope_stack_.back()->add( res );    
+            } else {
+                __warning( "resource linked but not cached!\n" );   
+            }
+        } else {
+            __warning( "loader not registered\n" );
+        }
+    }
+
+   // std::cout << "res: " << name << "\n";
+    
+    return res;
+}
+void manager::dump_scopes() {
+    size_t snum = 0;
+    
+    for( std::vector<scope_internal *>::reverse_iterator it = scope_stack_.rbegin(); it != scope_stack_.rend(); ++it ) {
+        std::cout << "res scope " << snum << ":\n";
+        ++snum;
+
+        for( boost::intrusive::list<res>::iterator it2 = (*it)->list_.begin(); it2 != (*it)->list_.end(); ++it2 ) {
+             std::cout << "res: " << it2->name() << "\n";
+        }
+    }
+    
+}
+size_t manager::push_scope()
+{
+    scope_internal *s = new scope_internal ( scope_stack_.size() );
+
+    scope_stack_.push_back ( s );
+
+    return s->scope_id();
+}
+size_t manager::pop_scope()
+{
+    
+    scope_internal *s = scope_stack_.back();
+    scope_stack_.pop_back();
+
+    
+    
+    while ( !s->list_.empty() ) {
+    
+    //    std::cout << "pop_scope uncache: " << s->list_.front().name() << "\n";
+        getchar();
+        uncache ( &s->list_.front() );
+        
+        s->list_.pop_front();
 
     }
     
+
+    size_t id = s->scope_id();
+    delete s;
+
+    return id;
+
 }
-}
+
+} // namespace g_res

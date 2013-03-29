@@ -66,6 +66,9 @@ static int	waserror = 0;
 g_resources_t	*g_rs;
 g_state_t	*g_st;
 
+
+
+
 /*
   ====================
   shock handling
@@ -559,7 +562,9 @@ int g_main( int argc, char* argv[] )
 		G_ResourceTypeRegister( g_rs, "lump", Res_RegisterLUMP, Res_UnregisterLUMP, Res_CacheLUMP, Res_UncacheLUMP );
 		G_ResourceTypeRegister( g_rs, "mp3", Res_RegisterMp3, Res_UnregisterMp3, Res_CacheMp3, Res_UncacheMp3 );
 //		G_ResourcesDump( g_rs );
-		
+        g_res::manager::get_instance().add_loader<g_res::tag::gltex>( new g_res::loader::gltex() );
+        g_res::manager::get_instance().add_loader<g_res::tag::sound>( new g_res::loader::sound() );
+        g_res::manager::get_instance().add_loader<g_res::tag::lump>( new g_res::loader::lump() );
 	}	
 
 // 	usecs = 0;
@@ -572,7 +577,7 @@ int g_main( int argc, char* argv[] )
 
 	__named_message( "register 'sound_res' resources\n" );
 	G_ResourceFromClass( g_rs, "res/sound_res.hobj" );
-
+    g_res::manager::get_instance().init_from_res_file( "res/sound_res.hobj" );
 
 
 	SND_StartUp();
@@ -638,6 +643,11 @@ int g_main( int argc, char* argv[] )
 	G_ResourceFromClass( g_rs, "res/fx_res.hobj" );
 
 
+    g_res::manager::get_instance().init_from_res_file( "res/gltex_res.hobj" );
+    g_res::manager::get_instance().init_from_res_file( "res/resources.hobj" );
+    g_res::manager::get_instance().init_from_res_file( "res/fx_res.hobj" );
+    g_res::manager::get_instance().init_from_res_file( "res/hud.hobj" );
+    
 #if 0
 	{
 		ib_file_t *h;

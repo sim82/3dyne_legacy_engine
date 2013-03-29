@@ -51,4 +51,26 @@ typedef struct res_sound_cache_s
 	unsigned char	*sound;
 } res_sound_cache_t;
 
+namespace g_res {
+namespace tag {
+     class sound;
+}
+
+
+template<typename tag>
+class traits;
+
+
+template<>
+class traits<tag::sound> {
+public:
+//     typedef resource::sound type;
+    typedef res_sound_register_t reg_state;
+    typedef res_sound_cache_t cache_state;
+
+
+    const static size_t id = 2;
+    const static char *name;// = "sound";
+};
+} // namespace g_res
 #endif

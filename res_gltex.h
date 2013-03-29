@@ -36,12 +36,32 @@
 
 #ifndef __res_gltex
 #define __res_gltex
-
+#include "g_resources.h"
 #include "g_resourcesdefs.h"
 
 g_resource_t * Res_RegisterGLTEX( hobj_t *resobj );
 void Res_UnregisterGLTEX( g_resource_t *r );
 void Res_CacheGLTEX( g_resource_t *r );
 void Res_UncacheGLTEX( g_resource_t *r );
+
+
+namespace g_res {
+
+    
+
+    
+namespace loader {
+class gltex : public base {
+public:
+    virtual res* make( hobj_t *obj ) ;
+    virtual void unmake( res* ) ;
+    virtual void cache( res* ) ;
+    virtual void uncache( res* ) ;
+};
+
+} // namespace loader
+
+
+} // namespace g_res
 
 #endif
