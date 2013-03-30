@@ -5,6 +5,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <cstring>
+#include <set>
 #include "rel_ptr.h"
 #include "u_hobj.h"
 #include "interfaces.h"
@@ -220,6 +221,14 @@ public:
     }
     
     char *dup_cstr( const char *str ) {
+        
+        string_dict_type::iterator it = string_dict_.find(const_cast<char *>(str)); // hmm hmm
+        
+        if( it != string_dict_.end() ) {
+            return *it;
+        }
+            
+        
         size_t len = strlen(str);
         
         
@@ -235,6 +244,8 @@ public:
         
         strcpy( ptr, str );
         
+        string_dict_.insert( ptr );
+        
         return ptr;
         
     }
@@ -249,10 +260,19 @@ public:
     
     
 private:
+    class cstr_less {
+    public:
+        inline bool operator()( const char *a, const char *b ) {
+            return strcmp( a, b ) < 0;
+        }
+    };
+    
     size_t num_;
     std::vector<char> buf_;
     std::vector<char>::iterator iter_;
     
+    typedef std::set<char *, cstr_less> string_dict_type;
+    string_dict_type string_dict_;
 };
 
 
