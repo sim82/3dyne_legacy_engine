@@ -6,6 +6,6 @@ if [ -z "$COLRM_EXEC" ]; then
 fi
 
 rm -f files.txt
-find . -name "*" -type f -not -name "hash.bin" | $COLRM_EXEC 1 2 > files.txt
+find -L . -name "*" -type l -o \( -type f -not -name "hash.bin" \) -o -type d -name ".git" -prune | $COLRM_EXEC 1 2 > files.txt
 
 $DH_EXEC
