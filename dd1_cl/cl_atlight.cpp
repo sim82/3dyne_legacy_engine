@@ -305,8 +305,8 @@ static void InitLightSource( cl_at_light_t *light )
 	}
 	else 
 	{
-		printf( "initial lightsource color is " );
-		Vec3dPrint( light->map_lightsource->color );
+	//	printf( "initial lightsource color is " );
+		//Vec3dPrint( light->map_lightsource->color );
 		Vec3dCopy( light->initial_color, light->map_lightsource->color );
 	}
 }

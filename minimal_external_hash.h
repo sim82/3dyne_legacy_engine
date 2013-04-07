@@ -188,7 +188,7 @@ private:
 
 #endif
 
-
+namespace {
 template<typename K>
 uint64_t hash_value( const K &k ) {
     return k.hash();
@@ -215,7 +215,7 @@ uint64_t hash_value( const char *s ) {
     
     return hash;
 }
-
+}
 
 template<typename T>
 static T align( T v ) {

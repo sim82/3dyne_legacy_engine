@@ -159,7 +159,7 @@ namespace impl_iso_fstream {
             ss << path_;
             ss << "/";
             ss << filename;
-            __named_message( "try open: %s\n", ss.str().c_str() );
+            //__named_message( "try open: %s\n", ss.str().c_str() );
             
             std::auto_ptr<impl_iso_fstream::file> fp( new impl_iso_fstream::file( ss.str().c_str() ));
             if( fp->is_open() ) {

@@ -1451,13 +1451,13 @@ void GC_MainLoop()
 		{
             unsigned int time = SYS_GetMsec();
             static unsigned int last = time;
-            
+#if 0  
             if( time - last > 2000 ) {
                
                 g_res::manager::get_instance().dump_scopes();
                 last = time;
             }
-            
+#endif       
         }
 		
 		{
@@ -2263,11 +2263,13 @@ void GC_GiveBackTime()
 	now = SYS_GetMsec();
 
 //	__named_message( "%d %d\n", now, gc_lastgiveback );
-	if( now - gc_lastgiveback < 100 )
+	if( now - gc_lastgiveback < 500 )
 	{
 		TFUNC_LEAVE;
+        return;
 	}
-
+	gc_lastgiveback = now;
+	
 	R_ClearView();
 
 	LA_BeginDraw();

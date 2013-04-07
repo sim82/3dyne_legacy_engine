@@ -178,7 +178,7 @@ void G_SpawnMap( g_map_t *map, char *path )
 
     
     //bake_hobj(map->mapnodehm->root );
-    bake_hobj(map->shapehm->root );
+  //  bake_hobj(map->shapehm->root );
     
 	if ( !map->planehm )
 		__error( "plane class load failed.\n" );
