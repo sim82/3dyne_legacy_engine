@@ -88,7 +88,7 @@ public:
     template<typename T>
     T* alloc_raw() {
         size_t s = sizeof(T);
-        
+        iter_ = align_forward<8>(iter_);
         char *ptr = &(*iter_);
         iter_ += s;
         
@@ -105,7 +105,7 @@ public:
     template<typename T>
     T* alloc() {
         size_t s = sizeof(T);
-        
+        iter_ = align_forward<8>(iter_);
         char *ptr = &(*iter_);
         iter_ += s;
         
