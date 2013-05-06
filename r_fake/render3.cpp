@@ -1042,61 +1042,6 @@ void R_RenderFPsyss( void )
   =============================================================================
 */
 
-void R_TestHalo( void )
-{
-	vec3d_t		pos={16.0,16.0,16.0};
-	vec3d_t		tmp;
-	vec4d_t		v;
-
-	Vec3dScale( tmp, 1.0/16.0, pos );
-	CalcVertex( v, tmp );	
-	if ( v[3] <= 0.0 )
-		return;
-
-	v[3] = 1.0/v[3];
-
-	{
-		int		x, y;
-		fp_t		xx, yy;
-
-		x = ( (v[0]*v[3])*320.0+320.0 );
-		y = ( (v[1]*v[3])*240.0+240.0 );
-		
-		xx = v[0]*v[3];
-		yy = v[1]*v[3];
-
-		if ( x>=0 && x<640 && y>=0 && y<480 )
-		{
-			fp_t		z1, z2;
-			
-			// read current z1
-			glReadBuffer( GL_BACK );
-			glReadPixels( x, y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z1 );
-			
-			// write halo z
-			glBegin( GL_POINTS );
-			glVertex3f( xx, yy, v[3] );
-			glEnd();
-			
-			// read current z2
-			glReadBuffer( GL_BACK );
-			glReadPixels( x, y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z2 );			
-			
-
-			if ( z1 != z2 )
-			{
-				printf( "halo active\n" );
-				//	R_DrawSprite( G_ResourceSearch( g_rs, "gltex.fx.halo7" ), pos, 4*1.0, 4*1.33 );
-			}
-			else
-			{
-				printf( "no halo\n" );
-			}
-//			printf( "(%d, %d, %.6f, %.6f)\n", x, y, z1, z2 );
-		}
-	}	
-}
-
 void R_DrawHaloSprite( g_resource_t *gltex, vec3d_t pos, fp_t width, fp_t height );
 
 void R_RenderHalos( void )
