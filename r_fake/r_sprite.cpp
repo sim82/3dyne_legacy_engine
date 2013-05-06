@@ -42,40 +42,6 @@
 #include "r_sprite.h"
 #include "render.h"
 
-void R_DrawSprite( g_resource_t *gltex, vec3d_t pos, fp_t width, fp_t height )
-{
-	vec3d_t		tmp;
-	vec4d_t		v;
-	res_gltex_cache_t	*cache;
-	int		texobj;
-
-	cache = ( res_gltex_cache_t * ) gltex->res_cache;
-	texobj = cache->texobj;
-
-	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-	glBindTexture( GL_TEXTURE_2D, texobj );
-	glEnable( GL_TEXTURE_2D );
-	glEnable ( GL_BLEND );                                          
-	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );	
-
-	Vec3dScale( tmp, 1.0/16.0, pos );
-	CalcVertex( v, tmp );
-
-	glColor4f( 1, 1, 1, 1 );
-
-	glBegin( GL_TRIANGLE_FAN );
-	glTexCoord2f( 0,0 );
-	glVertex3f( (v[0]+width)/v[3], (v[1]-height)/v[3], 1.0/v[3] );
-	glTexCoord2f( 1,0 );
-	glVertex3f( (v[0]-width)/v[3], (v[1]-height)/v[3], 1.0/v[3] );
-	glTexCoord2f( 1,1 );
-	glVertex3f( (v[0]-width)/v[3], (v[1]+height)/v[3], 1.0/v[3] );
-	glTexCoord2f( 0,1 );
-	glVertex3f( (v[0]+width)/v[3], (v[1]+height)/v[3], 1.0/v[3] );
-	glEnd();	
-	
-}
-
 void R_DrawHaloSprite( g_resource_t *gltex, vec3d_t pos, fp_t width, fp_t height )
 {
 	vec3d_t		tmp;
@@ -97,35 +63,6 @@ void R_DrawHaloSprite( g_resource_t *gltex, vec3d_t pos, fp_t width, fp_t height
 	glVertex3f( (v[0]/v[3]+width), (v[1]/v[3]+height), 1.0/v[3]  );
 	glEnd();	
 	
-}
-
-void R_DrawSprite2( g_resource_t *gltex, vec3d_t pos, fp_t width, fp_t height )
-{
-	vec3d_t		tmp;
-	vec4d_t		v;
-	res_gltex_cache_t	*cache;
-	int		texobj;
-
-	cache = ( res_gltex_cache_t * ) gltex->res_cache;
-	texobj = cache->texobj;
-
-	glBindTexture( GL_TEXTURE_2D, texobj );
-
-	Vec3dScale( tmp, 1.0/16.0, pos );
-	CalcVertex( v, tmp );
-
-//	glColor4f( 1, 1, 1, 1 );
-
-	glBegin( GL_TRIANGLE_FAN );
-	glTexCoord2f( 0,0 );
-	glVertex3f( (v[0]+width)/v[3], (v[1]-height)/v[3], 1.0/v[3] );
-	glTexCoord2f( 1,0 );
-	glVertex3f( (v[0]-width)/v[3], (v[1]-height)/v[3], 1.0/v[3] );
-	glTexCoord2f( 1,1 );
-	glVertex3f( (v[0]-width)/v[3], (v[1]+height)/v[3], 1.0/v[3] );
-	glTexCoord2f( 0,1 );
-	glVertex3f( (v[0]+width)/v[3], (v[1]+height)/v[3], 1.0/v[3] );
-	glEnd();		
 }
 
 #define SPRITE_ROTATATION_STEPS		( 32 )
