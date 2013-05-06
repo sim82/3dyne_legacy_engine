@@ -174,7 +174,6 @@ set( R_FAKE_SRC r_fake/g_blockmap.cpp
 	r_fake/r_shapes.cpp
 	r_fake/r_light.cpp
 	r_fake/r_light_sw.cpp
-	r_fake/r_light_gl.cpp
 	r_fake/r_lightmap.cpp
 	r_fake/r_shpctrljobs.cpp
 	r_fake/J_AmbientColor.cpp
