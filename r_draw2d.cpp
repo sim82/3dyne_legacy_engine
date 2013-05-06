@@ -137,18 +137,6 @@ void R_BeginDraw2d( void )
 */
 void R_EndDraw2d( void )
 {
-#if 0
-	static fp_t	i = 0.0;
-	glBegin( GL_POLYGON );
-
-	glColor3f( i, i, i );
-	i += 0.05;
-	glVertex3f( -0.5, -0.5, 0 );
-	glVertex3f( 0.5, -0.5, 0 );
-	glVertex3f( 0.5, 0.5, 0 );
-	glVertex3f( -0.5, 0.5, 0 );
-	glEnd();
-#endif
 //	glFlush();
 	glFlush();
 }
@@ -266,30 +254,3 @@ void R_Draw2dTexRect( int x, int y, int width, int height, fp_t tx, fp_t ty, fp_
 	glVertex2f( xx, yy+h );
 	glEnd();	
 }
-
-/*
-  ====================
-  R_Draw2dRect
-
-  ====================
-*/
-void R_Draw2dRect( int x, int y, int width, int height )
-{
-	fp_t	xx, yy;
-	fp_t		w, h;
-	
-	xx = r_xorigin + ((fp_t)(x)) * r_xgscl;
-	yy = r_yorigin + ((fp_t)(y)) * r_ygscl;
-	
-	w = ((fp_t)(width)) * r_xgscl;
-	h = ((fp_t)(height)) * r_ygscl;
-	
-	glBegin( GL_POLYGON );
-	printf( "%f %f\n", xx, yy );
-	glVertex2f( xx, yy );
-	glVertex2f( xx+w, yy );
-	glVertex2f( xx+w, yy+h );
-	glVertex2f( xx, yy+h );
-	glEnd();	
-}
-
