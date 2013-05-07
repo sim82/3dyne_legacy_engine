@@ -1915,6 +1915,7 @@ void R_Prepare( void )
 	ri_local_light_num = 0;
 	ri_sprite_num = 0;
 	ri_psys_num = 0;
+	ri_halo_num = 0;
 }
 
 void R_RenderView( void )
