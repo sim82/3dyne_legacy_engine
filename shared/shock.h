@@ -42,7 +42,8 @@ extern "C" {
 //#include <stdlib.h>
 //#include "s_config.h"
 
-
+#include <cassert>
+    
 #if !defined( __GNUC__ )
 #define __PRETTY_FUNCTION__ "(unknown)"
 #endif
@@ -74,14 +75,20 @@ extern "C" {
 #define __named_message		SOS_LocateFunction( __PRETTY_FUNCTION__ ), SOS_Message
 #define __warning		SOS_LocateFunction( __PRETTY_FUNCTION__ ), \
 				SOS_Message( "Warning: " ), SOS_Message
-#define __error			SOS_Seperator(), \
-				SOS_Locate( __FILE__, __PRETTY_FUNCTION__, __LINE__), \
-				SOS_Error
 
+#define __error(...)	        SOS_Seperator(), \
+				SOS_Locate( __FILE__, __PRETTY_FUNCTION__, __LINE__), \
+				SOS_Error(__VA_ARGS__), \
+				assert(0)  // let static analysis tools know that __error never returns
+                                
+
+
+				
 #define __chkptr(ptr)	if ( ptr == NULL ) { \
 				SOS_Seperator(); \
 				SOS_Locate( __FILE__, __PRETTY_FUNCTION__, __LINE__); \
-				SOS_Error("Null pointer.\n"); \
+				SOS_Error("Null pointer.\n"), \
+				assert(0); \
 			}
 
 #define __chkalign( ptr, x )	if ( ((size_t)(ptr)) & (x-1) ) { \

@@ -163,6 +163,8 @@ void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned cha
 
 	mipmap++;
 
+        assert( width > 0 && height > 0 );
+        
 	if ( width == 1 || height == 1 )
 		return;
 

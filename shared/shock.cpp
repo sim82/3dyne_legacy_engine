@@ -115,6 +115,7 @@ void SOS_Error(const char* errtext_ptr, ... ) {
 	fprintf( stderr, "\n=== End of error Message =============                    <snap>\n" );
 
 	SOS_CallShockHandler();
+        
 
 }
 

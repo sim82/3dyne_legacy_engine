@@ -68,7 +68,7 @@ if(WIN32)
 else()
 
   add_definitions( -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="linux.i386")
-  set( CMAKE_CXX_FLAGS "-Wall" )
+  set( CMAKE_CXX_FLAGS "-Wall -fsanitize=address" )
 
 #   set( SS_SRC r_glx.cpp i_x11.cpp glx_service.cpp )
   set( SS_SRC r_sdl )
