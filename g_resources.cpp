@@ -679,7 +679,7 @@ void manager::init_from_res_obj ( hobj_t* hobj )
         return;
     }
 
-    std::cout << "name: " << hobj->name << "\n";
+   //std::cout << "name: " << hobj->name << "\n";
     
     size_t lid = loader_id ( hobj->name );
     //assert ( lid != size_t ( -1 ) );

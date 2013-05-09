@@ -1,20 +1,20 @@
-#define GL_GLEXT_PROTOTYPES 1
-#if D3DYNE_OS_WIN
-#include <SDL.h>
-#else
-#include <SDL/SDL.h>
-#include <SDL/SDL_mouse.h>
-#include <SDL/SDL_opengl.h>
-#endif
-
 #define vgl_notextern
-#include "shared/log.h"
+#include <SFML/Graphics.hpp>
 
+#define GL_GLEXT_PROTOTYPES 1
+#include <SFML/OpenGL.hpp>
+
+// #include "glcorearb.h"
 #include "interfaces.h"
 #include "r_private.h"
 #include "r_interface.h"
 
-static SDL_Surface* sdl_surf_display = 0;
+
+
+
+// #include <SFML/Window.hpp>
+
+
 sh_var_t *r_devicewidth, *r_deviceheight;
 static sh_var_t *r_fullscreen;
 
@@ -33,40 +33,59 @@ gl_info_t       *r_glinfo = NULL;
 
   ====================
 */
+
+class sfml_state {
+public:
+    sfml_state( const sf::ContextSettings & cs ) 
+    : window_(sf::VideoMode(r_devicewidth->ivalue, r_deviceheight->ivalue), "3dyne legacy engine", sf::Style::Default, cs )
+    {
+        std::cout << "sfml_state constructor\n";
+        
+    }
+    
+    sf::RenderWindow window_;
+};
+
+
+static sfml_state *s_sfml_state = 0;
+
 void I_SDLStartUp();
 void R_StartUp()
 {
 	TFUNC_ENTER;
-
-	if ( SDL_Init ( SDL_INIT_EVERYTHING ) < 0 ) {
-		__error ( "SDL_Init failed\n" );
-	}
+        
+        
+        
+     
+        
+        
+// 	if ( SDL_Init ( SDL_INIT_AUDIO ) < 0 ) {
+// 		__error ( "SDL_Init failed\n" );
+// 	}
 
 	r_devicewidth = SHP_GetVar ( "r_devicewidth" );
 	r_deviceheight = SHP_GetVar ( "r_deviceheight" );
 	r_fullscreen = SHP_GetVar ( "r_fullscreen" );
 
-	Uint32 fs_flag = r_fullscreen->ivalue ? SDL_FULLSCREEN : 0;
-
-    
+	sf::ContextSettings cs(32, 0, 0, 1, 2 );
     
 	
+    if( s_sfml_state == 0 ) {
+        s_sfml_state = new sfml_state(cs);
+    }
+    
+    s_sfml_state->window_.display();
+    s_sfml_state->window_.
+    GLuint x;
+    
+    const GLubyte *v = glGetString(GL_VERSION);
+    
+    std::cout << "GL_VERSION: " << v << "\n";
+    
+//     glGenBuffers( 1, &x );
 	
-	if ( ( sdl_surf_display = SDL_SetVideoMode ( r_devicewidth->ivalue, r_deviceheight->ivalue, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_OPENGL | fs_flag ) ) == NULL ) {
-		__error ( "SDL_SetVidMode failed\n" );;
-	}
 	I_SDLStartUp();
 
-    const GLubyte *version = glGetString(GL_VERSION);
-    
-    GLuint x[2];
-    glGenBuffers( 2, x );
-    
-    int err =  ((int)glGetError());
-    
-    DD_LOG << "opengl version: " << (const char*)version << " " << x[0] << " " << x[1] << " " << (err == GL_NO_ERROR ? "good" : "bad" ) << "\n";
-    //getchar();
-    
 	// hard coded gl info. I assume that _every_ card in use on this planet supports this stuff...
 	r_glinfo = ( gl_info_t * ) MM_Malloc ( sizeof ( gl_info_t ) );
 	r_glinfo->arb_multitexture = 1;
@@ -83,9 +102,9 @@ void R_StartUp()
 	glEnd();
 
 	glFlush();
-	SDL_GL_SwapBuffers();
+	
 	glClear ( GL_COLOR_BUFFER_BIT );
-
+//         glGenBuffers();
 // let e'm say sth
 	R_Talk();
 
@@ -123,68 +142,87 @@ void R_SwapBuffer ( void )
 {
 //      __named_message( "\n" );
 	glFlush();
-	SDL_GL_SwapBuffers();
+        
+        if( s_sfml_state != 0 ) {
+            s_sfml_state->window_.display();
+        }
 }
 
 
-
+static bool s_grab_mouse = false;
 
 ///////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////
 void R_Hint ( int hint )
 {
+    
+
 	switch ( hint ) {
 	case R_HINT_GRAB_MOUSE:
 		
-		SDL_ShowCursor(0);
-		SDL_WM_GrabInput ( SDL_GRAB_ON );
+        s_grab_mouse = true;
 		break;
 	
 
 	case R_HINT_UNGRAB_MOUSE:
 		
-		SDL_ShowCursor(1);
-		SDL_WM_GrabInput ( SDL_GRAB_OFF );
+		s_grab_mouse = false;
 		break;
 
 	default:
 		__warning ( "unknown render hint: %d\n", hint );
 	}
+
 }
 
 
-void I_SDLDoKey ( SDL_Event event );
-void I_SDLDoMouseMotion ( SDL_Event event );
-void I_SDLDoMouseButton ( SDL_Event event );
+void sfml_do_key ( const sf::Event & event );
+void sfml_do_mouse_motion ( const sf::Event & event );
+void sfml_do_mouse_button ( const sf::Event & event );
 
 void I_Update()
 {
-	SDL_Event event;
-	keventlistptr = 1;
-	md_x = md_y = 0;
+    if( s_sfml_state == 0 ) {
+        return;
+    }
 
-	while ( SDL_PollEvent ( &event ) ) {
-		switch ( event.type ) {
-		case SDL_MOUSEMOTION:
-			I_SDLDoMouseMotion ( event );
-			break;
+    
+    sf::Vector2u mid_point = s_sfml_state->window_.getSize();
+    mid_point *= 0.5;
+    
+    sf::Event event;
+    
+    while( s_sfml_state->window_.pollEvent( event ) ) {
+            switch ( event.type ) {
+            case sf::Event::MouseMoved:
+                    sfml_do_mouse_motion ( event, mid_point );
+                    
+                    if( s_grab_mouse ) {
+                     
+                        s_sfml_state->window_.
+                    }
+                    break;
 
-		case SDL_MOUSEBUTTONUP:
-		case SDL_MOUSEBUTTONDOWN:
-			I_SDLDoMouseButton ( event );
-			break;
+            case sf::Event::MouseButtonPressed:
+            case sf::Event::MouseButtonReleased:
+                    sfml_do_mouse_button ( event );
+                    break;
 
 
-		case SDL_KEYDOWN:
-		case SDL_KEYUP:
-			I_SDLDoKey ( event );
-			break;
+            case sf::Event::KeyPressed:
+            case sf::Event::KeyReleased:
+                    sfml_do_key ( event );
+                    break;
 
-		default:
-			printf ( "sdl event: %d\n", event.type );
-		}
-	}
-
+            default:
+                    printf ( "sfml event: %d\n", event.type );
+            }    
+        
+    }
+    
+	
+	
+	
 	keventlist[0].sym = ( gs_ksym ) keventlistptr; // first element in list is listsize!
 }
 
@@ -222,55 +260,56 @@ void I_SDLStartUp()
 }
 
 
-void I_SDLDoKey ( SDL_Event event )
+void sfml_do_key ( const sf::Event & event )
 {
 
 	unsigned int    gsksym = 0;
 
-	unsigned int type = event.key.type == SDL_KEYDOWN ? SYMTYPE_PRESS : SYMTYPE_RELEASE;
+	unsigned int type = event.type == sf::Event::KeyPressed ? SYMTYPE_PRESS : SYMTYPE_RELEASE;
 
 	// do abstraction from X11 keysym to gsksym
 
-	switch ( event.key.keysym.sym ) {
+        
+        
+	switch ( event.key.code ) {
 // ascii control codes 0x0 to 0x1F
-
-	case SDLK_BACKSPACE:
+	case sf::Keyboard::BackSpace:
 		gsksym = '\b';
 		goto abs_end;
 
-	case SDLK_TAB:
+	case sf::Keyboard::Tab:
 		gsksym = '\t';
 		goto abs_end;
 
-	case SDLK_RETURN:
+	case sf::Keyboard::Return:
 		gsksym = '\n';
 		goto abs_end;
 
 // cursor keys
-	case SDLK_UP:
+	case sf::Keyboard::Up:
 		//case SDLK_KP:
 		gsksym = GSK_CUP;
 		goto abs_end;
 
-	case SDLK_DOWN:
+	case sf::Keyboard::Down:
 		//case XK_KP_Down:
 		gsksym = GSK_CDOWN;
 		goto abs_end;
 
-	case SDLK_RIGHT:
+	case sf::Keyboard::Right:
 //         case XK_KP_Right:
 		gsksym = GSK_CRIGHT;
 		goto abs_end;
 
-	case SDLK_LEFT:
+	case sf::Keyboard::Left:
 //         case XK_KP_Left:
 		gsksym = GSK_CLEFT;
 		goto abs_end;
 
 
 // modifier keys
-	case SDLK_RSHIFT:
-	case SDLK_LSHIFT:
+	case sf::Keyboard::LShift:
+        case sf::Keyboard::RShift:
 		gsksym = GSK_SHIFT;
 		if ( !isshift ) {
 			isshift = 1;
@@ -280,21 +319,21 @@ void I_SDLDoKey ( SDL_Event event )
 		SHV_Printf ( "isshift" );
 		goto abs_end;
 
-	case SDLK_RCTRL:
-	case SDLK_LCTRL:
+	case sf::Keyboard::LControl:
+	case sf::Keyboard::RControl:
 		gsksym = GSK_CTRL;
 		goto abs_end;
 
-	case SDLK_RALT:
-	case SDLK_LALT:
+	case sf::Keyboard::LAlt:
+	case sf::Keyboard::RAlt:
 //         case XK_Meta_L:
 //         case XK_Meta_R:
 		gsksym = GSK_ALT;
 		goto abs_end;
 
 
-	case SDLK_RSUPER:
-	case SDLK_LSUPER:
+	case sf::Keyboard::LSystem:
+	case sf::Keyboard::RSystem:
 		gsksym = GSK_FUCK0;
 		goto abs_end;
 
@@ -304,91 +343,93 @@ void I_SDLDoKey ( SDL_Event event )
 //                 goto abs_end;
 //                 // other cursor conrol keys
 
-	case SDLK_INSERT:
+	case sf::Keyboard::Insert:
 //         case XK_KP_Insert:
 		gsksym = GSK_INSERT;
 		goto abs_end;
 
-	case SDLK_HOME:
+	case sf::Keyboard::Home:
 //         case XK_KP_Home:
 		gsksym = GSK_HOME;
 		goto abs_end;
 
-	case SDLK_END:
+	case sf::Keyboard::End:
 //         case XK_KP_End:
 		gsksym = GSK_END;
 		goto abs_end;
 
-	case SDLK_PAGEUP:
+	case sf::Keyboard::PageUp:
 //         case XK_KP_Page_Up:
 		gsksym = GSK_PGUP;
 		goto abs_end;
 
-	case SDLK_PAGEDOWN:
+	case sf::Keyboard::PageDown:
 //         case XK_KP_Page_Down:
 		gsksym = GSK_PGDN;
 		goto abs_end;
 
-	case SDLK_ESCAPE:
+	case sf::Keyboard::Escape:
 		gsksym = GSK_ESCAPE;
 		goto abs_end;
 
 // function keys
 
-	case SDLK_F1:
+	case sf::Keyboard::F1:
 		gsksym = GSK_F1;
 		goto abs_end;
 
 
-	case SDLK_F2:
+	case sf::Keyboard::F2:
 		gsksym = GSK_F2;
 		goto abs_end;
 
-	case SDLK_F3:
+	case sf::Keyboard::F3:
 		gsksym = GSK_F3;
 		goto abs_end;
 
-	case SDLK_F4:
+	case sf::Keyboard::F4:
 		gsksym = GSK_F4;
 		goto abs_end;
 
-	case SDLK_F5:
+	case sf::Keyboard::F5:
 		gsksym = GSK_F5;
 		goto abs_end;
 
-	case SDLK_F6:
+	case sf::Keyboard::F6:
 		gsksym = GSK_F6;
 		goto abs_end;
 
-	case SDLK_F7:
+        case sf::Keyboard::F7:
 		gsksym = GSK_F7;
 		goto abs_end;
 
-	case SDLK_F8:
+	case sf::Keyboard::F8:
 		gsksym = GSK_F8;
 		goto abs_end;
 
-	case SDLK_F9:
+	case sf::Keyboard::F9:
 		gsksym = GSK_F9;
 		goto abs_end;
 
-	case SDLK_F10:
+	case sf::Keyboard::F10:
 		gsksym = GSK_F10;
 		goto abs_end;
 
-	case SDLK_F11:
+	case sf::Keyboard::F11:
 		gsksym = GSK_F11;
 		goto abs_end;
 
-	case SDLK_F12:
+	case sf::Keyboard::F12:
 		gsksym = GSK_F12;
 		goto abs_end;
 
 	default:
 
-		if ( ( event.key.keysym.sym >= 0x020 ) && ( event.key.keysym.sym <= 0x07f ) ) {
-			gsksym = event.key.keysym.sym;
-		}
+		if ( ( event.key.code >= sf::Keyboard::A ) && ( event.key.code <= sf::Keyboard::Z ) ) {
+			gsksym = 'a' + (event.key.code - sf::Keyboard::A);
+		} else if ( ( event.key.code >= sf::Keyboard::Num0 ) && ( event.key.code <= sf::Keyboard::Num9 ) ) {
+                    gsksym = '0' + (event.key.code - sf::Keyboard::Num0);
+                }
 		goto abs_end;
 
 	}
@@ -406,39 +447,35 @@ abs_end:
 }
 
 
-void I_SDLDoMouseMotion ( SDL_Event event )
+void sfml_do_mouse_motion ( const sf::Event & event )
 {
-
-
-
-	md_x += event.motion.xrel;
-	md_y += event.motion.yrel;
-
-
+	md_x += event.mouseMove.x;
+	md_y += event.mouseMove.y;
 }
 
 
 
 
-void I_SDLDoMouseButton ( SDL_Event event )
+void sfml_do_mouse_button ( const sf::Event& event )
 {
 	unsigned int    gsksym = 0;
-	unsigned int    type = event.button.type == SDL_MOUSEBUTTONDOWN ? SYMTYPE_PRESS : SYMTYPE_RELEASE;
+	unsigned int    type = event.type == sf::Event::MouseButtonPressed ? SYMTYPE_PRESS : SYMTYPE_RELEASE;
 
 
-	switch ( event.button.button ) {
-	case 1:
+	switch ( event.mouseButton.button ) {
+        case sf::Mouse::Left:
 		gsksym = GSK_BUTTON1;
 		break;
 
-	case 2:
+	case sf::Mouse::Middle:
 		gsksym = GSK_BUTTON2;
 		break;
 
-	case 3:
+        case sf::Mouse::Right:
 		gsksym = GSK_BUTTON3;
 		break;
 
+#if 0
 	case 4:
 		gsksym = GSK_BUTTON4;
 		break;
@@ -447,7 +484,7 @@ void I_SDLDoMouseButton ( SDL_Event event )
 	case 5:
 		gsksym = GSK_BUTTON5;
 		break;
-
+#endif
 	default:
 		__warning ( "noknown mousebutton pressed\n" );
 		break;
