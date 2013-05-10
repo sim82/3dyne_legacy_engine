@@ -1,3 +1,5 @@
+#include <thread>
+
 #define GL_GLEXT_PROTOTYPES 1
 #if D3DYNE_OS_WIN
 #include <SDL.h>
@@ -13,6 +15,7 @@
 #include "interfaces.h"
 #include "r_private.h"
 #include "r_interface.h"
+#include "g_message_passing.h"
 
 static SDL_Surface* sdl_surf_display = 0;
 sh_var_t *r_devicewidth, *r_deviceheight;
@@ -33,6 +36,50 @@ gl_info_t       *r_glinfo = NULL;
 
   ====================
 */
+void I_SDLDoKey ( SDL_Event event );
+void I_SDLDoMouseMotion ( SDL_Event event );
+void I_SDLDoMouseButton ( SDL_Event event );
+
+void input_thread() {
+ 
+    mp::queue &q = g_global_mp::get_instance()->get_queue();
+    
+    while( !q.is_stopped() ) {
+     
+        SDL_Event event;
+        keventlistptr = 1;
+        md_x = md_y = 0;
+        
+        SDL_WaitEvent(&event);
+        
+        switch ( event.type ) {
+        case SDL_MOUSEMOTION:
+            I_SDLDoMouseMotion ( event );
+            break;
+            
+        case SDL_MOUSEBUTTONUP:
+        case SDL_MOUSEBUTTONDOWN:
+            I_SDLDoMouseButton ( event );
+            break;
+            
+            
+        case SDL_KEYDOWN:
+        case SDL_KEYUP:
+            I_SDLDoKey ( event );
+            break;
+            
+        default:
+            printf ( "sdl event: %d\n", event.type );
+        }
+        
+    }
+
+    keventlist[0].sym = ( gs_ksym ) keventlistptr; // first element in list is listsize!
+        
+    
+    
+}
+
 void I_SDLStartUp();
 void R_StartUp()
 {
@@ -93,6 +140,10 @@ void R_StartUp()
 		R_Hint ( R_HINT_GRAB_MOUSE );
 	}
 
+#if 1
+	std::thread t1( input_thread );
+    t1.detach();
+#endif
 	TFUNC_LEAVE;
 }
 
@@ -153,12 +204,12 @@ void R_Hint ( int hint )
 }
 
 
-void I_SDLDoKey ( SDL_Event event );
-void I_SDLDoMouseMotion ( SDL_Event event );
-void I_SDLDoMouseButton ( SDL_Event event );
 
 void I_Update()
 {
+    
+#if 0
+    
 	SDL_Event event;
 	keventlistptr = 1;
 	md_x = md_y = 0;
@@ -186,6 +237,7 @@ void I_Update()
 	}
 
 	keventlist[0].sym = ( gs_ksym ) keventlistptr; // first element in list is listsize!
+#endif
 }
 
 
@@ -401,7 +453,12 @@ abs_end:
 
 	keventlist[keventlistptr].sym = ( gs_ksym ) gsksym;
 	keventlist[keventlistptr].type = type;
-	keventlistptr++;
+	g_global_mp::get_instance()->get_queue().emplace<msg::key_event>( keventlist[keventlistptr] );
+    
+    //keventlistptr++;
+    
+    
+    
 //      printf( "gsksym: %d\n", gsksym );
 }
 
@@ -411,9 +468,10 @@ void I_SDLDoMouseMotion ( SDL_Event event )
 
 
 
-	md_x += event.motion.xrel;
-	md_y += event.motion.yrel;
+// 	md_x += event.motion.xrel;
+// 	md_y += event.motion.yrel;
 
+    g_global_mp::get_instance()->get_queue().emplace<msg::mouse_event>( event.motion.xrel, event.motion.yrel, SYS_GetMsec() );
 
 }
 
@@ -455,7 +513,9 @@ void I_SDLDoMouseButton ( SDL_Event event )
 
 	keventlist[keventlistptr].sym = ( gs_ksym ) gsksym;
 	keventlist[keventlistptr].type = type;
-	keventlistptr++;
+	g_global_mp::get_instance()->get_queue().emplace<msg::key_event>( keventlist[keventlistptr] );
+    
+    //keventlistptr++;
 }
 
 

@@ -37,6 +37,8 @@
 
 
 #include "db_lightmap.h"
+#include "g_message_passing.h"
+
 
 /*
   ====================
@@ -237,6 +239,7 @@ void ALIAS_Quit()
 {
 	// async gc_state update
 	gc_state->u_quit = true;
+    g_global_mp::get_instance()->get_queue().emplace<msg::gc_quit>();
 }
 
 void ALIAS_Dlevel_Start()
@@ -288,16 +291,20 @@ void ALIAS_StartRemoteGame()
 
 void ALIAS_StartSingle()
 {
+    g_global_mp::get_instance()->get_queue().emplace<msg::gc_start_single>();
+    
 	gc_state->u_start_single = true;
 }
 
 void ALIAS_StartDemo()
 {
+    g_global_mp::get_instance()->get_queue().emplace<msg::gc_start_demo>();
 	gc_state->u_start_demo = true;
 }
 
 void ALIAS_DropGame()
 {
+    g_global_mp::get_instance()->get_queue().emplace<msg::gc_drop_game>();
 	// fixme: u_drop_game cause a sig11
 	gc_state->u_start_demo = true;
 }

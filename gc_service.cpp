@@ -34,6 +34,9 @@
 
 // gc_service.c
 #include "compiler_config.h"
+
+#include "g_message_passing.h"
+
 #if D3DYNE_OS_WIN
   typedef int socklen_t;
   #include <winsock2.h>  
@@ -56,6 +59,8 @@
 #include "g_client.h"
 #include "g_library.h"
 #include "snd_deamon.h"
+#include "sh_input.h"
+  
 #if D3DYNE_OS_UNIXLIKE
 #include <stdio.h>                                                              
 #include <sys/types.h>                                                          
@@ -1230,7 +1235,7 @@ extern unsigned int	watch1, watch2;
 // SIM: FIXME: where are the sh menu prototypes?
 void SHM_SetCurPage( const char *);
 void SHM_GetCurpage( char * );
-
+void GC_AccumulateViewAngles();
 void GC_MainLoop()
 {
 	int	inactive, loops;
@@ -1309,6 +1314,146 @@ void GC_MainLoop()
 	SHM_SetCurPage( "main" );
 
     std::auto_ptr<g_res::manager::scope_guard> res_scope;
+    
+    
+    mp::queue &q = g_global_mp::get_instance()->get_queue();
+    
+    
+    q.add_default_stop_handler();
+    
+    q.add_handlerx<msg::key_event>( [] (std::unique_ptr<msg::key_event> m ) {
+        std::cout << "key_event: " << m->event_.sym << "\n";
+        
+        bool used = false;
+        
+        if( m->event_.type == SYMTYPE_PRESS ) {
+            used = SHM_Update(m->event_);
+        }
+        
+        
+        if( !used ) {
+            SHI_FireKsym( m->event_ );
+        }
+    });
+    
+    
+    q.add_handlerx<msg::mouse_event>( [] (std::unique_ptr<msg::mouse_event> m ) {
+        std::cout << "delta: " << SYS_GetMsec() - m->ts_ << "\n";
+        
+        md_x += m->md_x_;
+        md_y += m->md_y_;
+    } );
+    
+    q.add_handlerx<msg::gc_quit>( [&] (std::unique_ptr<msg::gc_quit> m ) {
+        if ( h_sendudp )
+        {
+            fclose( h_sendudp );
+        }
+        if ( h_recvudp )
+        {
+            fclose( h_recvudp );
+        }
+        Exit();
+        
+    });
+    
+    
+    q.add_handlerx<msg::gc_start_demo>( [&] (std::unique_ptr<msg::gc_start_demo> m ) {
+        GC_CleanUp( gc_state );
+        GC_InitDemo( gc_state );
+        GC_InitGame( gc_state );
+    } );
+    
+    q.add_handlerx<msg::gc_start_single>( [&] (std::unique_ptr<msg::gc_start_single> m ) {
+        res_scope.reset();
+        res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
+        gc_state->u_start_single = false;
+        GC_CleanUp( gc_state );
+        GC_InitSingle( gc_state );
+        GC_InitGame( gc_state );
+    } );
+    
+    q.add_handlerx<msg::gc_drop_game>( [&] (std::unique_ptr<msg::gc_drop_game> m ) {
+        gc_state->u_drop_game = false;
+        GC_CleanUp( gc_state );
+        
+        //
+        // restart demo
+        // 
+        gc_state->u_start_demo = true;
+    } );
+    
+    ms_wfbegin = SYS_GetMsec();
+    q.add_handlerx<msg::client_frame>( [&] (std::unique_ptr<msg::client_frame> m ) {
+        
+        //I_Update();
+        
+//         std::cout << "client_frame\n";
+        
+        int now = SYS_GetMsec();
+        gc_state->time = now;
+
+        
+        
+        if( ( now - ms_wfbegin ) >= MSEC_WF )
+        {
+            ms_wfbegin = SYS_GetMsec();
+            inactive = 0;
+//             SND_Update();
+            gc_localworldframe++;
+
+//             if( !(gc_localworldframe%10) )
+//                 SHV_ScrollSOut();
+            
+            ms_wfbegin = SYS_GetMsec();
+
+            if ( g_st )
+            {               
+                pmod.lon = g_st->view_lon;
+                pmod.lat = g_st->view_lat;
+            }
+
+            GC_RunServerFrame();
+
+//             rfalltime = 0;
+//             rfnum = 0;
+            
+            wf_mdx = wf_mdy = 0;
+        }
+
+        
+        
+        
+        
+        ms_rfbegin = now;
+        
+        //
+        // no accumulation during demos ( fix sky )
+        //
+        if ( !gc_state->gc_is_demo )
+        {
+            GC_AccumulateViewAngles();
+        }
+        
+        wf_mdx += md_x;
+        wf_mdy += md_y;
+        md_x = md_y = 0;
+        GC_RunClientFrame();
+        int ms2 = SYS_GetMsec();
+        ms_rfdelta = ms2-ms_rfbegin;
+        usleep(0);
+        
+        I_Update();
+        q.emplace<msg::client_frame>();
+        
+    } );
+    
+    q.emplace<msg::gc_start_demo>();
+    
+    q.emplace<msg::client_frame>();
+    while( true ) {
+        q.dispatch_pop();
+    }
     
 	for( ;; )
 	{
@@ -1661,10 +1806,10 @@ void GC_AccumulateViewAngles( void )
 
 	delta_sec = ((fp_t)(ms_rfdelta)) / 1000.0;
 
-	if ( md_x > 50 )
-		md_x = 50;
-	if ( md_y > 50 )
-		md_y = 50;
+// 	if ( md_x > 50 )
+// 		md_x = 50;
+// 	if ( md_y > 50 )
+// 		md_y = 50;
 
 //	cprintf( "delta_sec: %.3f\n", delta_sec );
 
@@ -1803,6 +1948,7 @@ void GC_ClientInputUpdate()
 	wf_mdx += md_x;
 	wf_mdy += md_y;
 
+    
         
 	if( gc_isshell )
 		SHV_Update( keventlist );
