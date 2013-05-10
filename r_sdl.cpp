@@ -30,6 +30,10 @@ unsigned int            keventlistptr;
 int     md_x, md_y;
 
 gl_info_t       *r_glinfo = NULL;
+
+
+#define USE_INPUT_THREAD (1)
+
 /*
   ====================
   R_StartUp
@@ -40,11 +44,13 @@ void I_SDLDoKey ( SDL_Event event );
 void I_SDLDoMouseMotion ( SDL_Event event );
 void I_SDLDoMouseButton ( SDL_Event event );
 
-void input_thread() {
+void input_thread_func() {
  
     mp::queue &q = g_global_mp::get_instance()->get_queue();
     
-    while( !q.is_stopped() ) {
+    bool stop_requested = false;
+    
+    while( !q.is_stopped() && !stop_requested ) {
      
         SDL_Event event;
         keventlistptr = 1;
@@ -68,17 +74,30 @@ void input_thread() {
             I_SDLDoKey ( event );
             break;
             
+        case SDL_USEREVENT:
+            if( event.user.code == 2 ) {
+                DD_LOG << "stopping input thread due to stop event\n";
+                stop_requested = true;
+             
+            }
+            break;
+            
         default:
             printf ( "sdl event: %d\n", event.type );
         }
         
     }
 
-    keventlist[0].sym = ( gs_ksym ) keventlistptr; // first element in list is listsize!
-        
+  
+  
+  if( !stop_requested ) {
+      DD_LOG << "input thread stopped because queue::is_stopped\n";   
+  }
+  DD_LOG << "input thread returned\n";
     
     
 }
+static std::thread input_thread;
 
 void I_SDLStartUp();
 void R_StartUp()
@@ -140,9 +159,9 @@ void R_StartUp()
 		R_Hint ( R_HINT_GRAB_MOUSE );
 	}
 
-#if 1
-	std::thread t1( input_thread );
-    t1.detach();
+#if USE_INPUT_THREAD
+	input_thread = std::thread( input_thread_func );
+//     t1.detach();
 #endif
 	TFUNC_LEAVE;
 }
@@ -158,6 +177,21 @@ void R_ShutDown()
 	TFUNC_ENTER;
 
 
+    
+    
+    if( input_thread.joinable() ) {
+        
+        SDL_Event user_event;
+
+        user_event.type=SDL_USEREVENT;
+        user_event.user.code=2;
+        user_event.user.data1=NULL;
+        user_event.user.data2=NULL;
+        SDL_PushEvent(&user_event);
+        
+        input_thread.join();   
+    }
+    
 	__named_message ( "\n" );
 
 
@@ -208,7 +242,7 @@ void R_Hint ( int hint )
 void I_Update()
 {
     
-#if 0
+#if !USE_INPUT_THREAD
     
 	SDL_Event event;
 	keventlistptr = 1;
@@ -468,8 +502,8 @@ void I_SDLDoMouseMotion ( SDL_Event event )
 
 
 
-// 	md_x += event.motion.xrel;
-// 	md_y += event.motion.yrel;
+//  	md_x += event.motion.xrel;
+//  	md_y += event.motion.yrel;
 
     g_global_mp::get_instance()->get_queue().emplace<msg::mouse_event>( event.motion.xrel, event.motion.yrel, SYS_GetMsec() );
 

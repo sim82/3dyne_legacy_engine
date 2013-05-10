@@ -36,6 +36,7 @@
 #include "compiler_config.h"
 
 #include "g_message_passing.h"
+#include "shared/log.h"
 
 #if D3DYNE_OS_WIN
   typedef int socklen_t;
@@ -1337,11 +1338,20 @@ void GC_MainLoop()
     });
     
     
-    q.add_handlerx<msg::mouse_event>( [] (std::unique_ptr<msg::mouse_event> m ) {
-        std::cout << "delta: " << SYS_GetMsec() - m->ts_ << "\n";
+    size_t oldest_mouse_event = size_t(-1);
+    size_t newest_mouse_event = 0;
+    
+    q.add_handlerx<msg::mouse_event>( [&] (std::unique_ptr<msg::mouse_event> m ) {
+        
+        int now = SYS_GetMsec();
+        //std::cout << "delta: " << now - m->ts_ << "\n";
         
         md_x += m->md_x_;
         md_y += m->md_y_;
+        
+        oldest_mouse_event = std::min( size_t(m->ts_), oldest_mouse_event );
+        newest_mouse_event = std::max( size_t(m->ts_), newest_mouse_event );
+        
     } );
     
     q.add_handlerx<msg::gc_quit>( [&] (std::unique_ptr<msg::gc_quit> m ) {
@@ -1393,6 +1403,13 @@ void GC_MainLoop()
         int now = SYS_GetMsec();
         gc_state->time = now;
 
+
+        if( newest_mouse_event != 0 ) {
+            DD_LOG << "event latency: " << (now - newest_mouse_event) << " - " << (now - oldest_mouse_event) << "\n";
+            
+            oldest_mouse_event = size_t(-1);
+            newest_mouse_event = 0;
+        }
         
         
         if( ( now - ms_wfbegin ) >= MSEC_WF )
@@ -1437,14 +1454,17 @@ void GC_MainLoop()
         
         wf_mdx += md_x;
         wf_mdy += md_y;
+        
         md_x = md_y = 0;
         GC_RunClientFrame();
         int ms2 = SYS_GetMsec();
         ms_rfdelta = ms2-ms_rfbegin;
-        usleep(0);
+//        usleep(1000000);
+        sched_yield();
         
         I_Update();
         q.emplace<msg::client_frame>();
+        
         
     } );
     
