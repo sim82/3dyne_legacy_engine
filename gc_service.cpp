@@ -33,6 +33,8 @@
 
 
 // gc_service.c
+#include <functional>
+#include <algorithm>
 #include "compiler_config.h"
 
 #include "g_message_passing.h"
@@ -1453,7 +1455,27 @@ void GC_MainLoop()
         wf_mdx = wf_mdy = 0;
     } );
     
+    std::chrono::high_resolution_clock::time_point last_rf = std::chrono::high_resolution_clock::time_point::max(); 
+    
+    std::deque<std::chrono::high_resolution_clock::duration> duration_avg;
+    
     q.add_handler<msg::client_frame>( [&] (std::unique_ptr<msg::client_frame> m ) {
+        
+        auto tp_now = std::chrono::high_resolution_clock::now();   
+        if( false && last_rf != std::chrono::high_resolution_clock::time_point::max() ) {
+            duration_avg.push_back( tp_now - last_rf );
+            
+            if( duration_avg.size() > 10 ) {
+                duration_avg.pop_front();   
+            }
+            
+            auto duration_all = std::accumulate( duration_avg.begin(), duration_avg.end(), std::chrono::high_resolution_clock::duration::zero(), std::plus<std::chrono::high_resolution_clock::duration>() );
+            duration_all /= duration_avg.size();
+            DD_LOG << "fps: " << (1000000.0 / std::chrono::duration_cast<std::chrono::microseconds>(duration_all).count()) << "\n";
+            
+        }
+        
+        last_rf = tp_now;
         
         //I_Update();
         
@@ -1526,15 +1548,25 @@ void GC_MainLoop()
         
         int ms2 = SYS_GetMsec();
         ms_rfdelta = ms2-ms_rfbegin;
-//        usleep(1000000);
-        sched_yield();
+//         usleep(0);
+//         sched_yield();
         
         I_Update();
-        q.emplace<msg::client_frame>();
+        q.emplace<msg::swap_buffer>();
         
         
     } );
     
+    
+    q.add_handler<msg::swap_buffer>( [&] (std::unique_ptr<msg::swap_buffer> m ) {
+        R_SwapBuffer();    
+        q.emplace<msg::client_frame>();
+    });
+    
+    
+    q.add_handler<msg::print_queue_profiling>( [&] (std::unique_ptr<msg::print_queue_profiling> m ) {
+        q.print_profiling(std::cout);
+    });
     
     q.emplace<msg::gc_start_demo>();
     
@@ -1543,6 +1575,7 @@ void GC_MainLoop()
     mp::timer_source timer;
     
     timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
+    timer.add_timer<msg::print_queue_profiling>( &q, std::chrono::seconds(5), true );
     
     
     
@@ -2146,7 +2179,7 @@ void GC_RunClientFrame()
 	}
 	
 	GC_DoRFDraw();
-	R_SwapBuffer();
+	//R_SwapBuffer();
 	TFUNC_LEAVE;
 }
 

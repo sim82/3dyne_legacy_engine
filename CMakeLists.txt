@@ -33,6 +33,9 @@ cmake_minimum_required( VERSION 2.8 )
 
 add_subdirectory( dd1_cl )
 add_subdirectory( dd1_sv )
+if(USE_DLT)
+    add_subdirectory( dlt )
+endif()
 
 if(WIN32)
   add_subdirectory( 3dyne_extlibs )
@@ -227,6 +230,11 @@ set( R_GEN_GL_SRC r_gen_gl/r_real.cpp
 add_executable( dd ${ENGINE_SRC} ${R_FAKE_SRC} ${R_GEN_GL_SRC} ${SS_SRC} ${ALL_HEADERS} )
 #target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 )
 add_executable( disk_hash disk_hash.cpp )
+
+if(USE_DLT)
+    include_directories( dlt/include/dlt )
+endif()
+
 
 if(WIN32)
   add_executable( colrm_dh colrm_dh.cpp )

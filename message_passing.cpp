@@ -16,10 +16,23 @@
 #include "message_passing.h"
 
 
+
+
+#if DD_USE_DLT
+#include "dlt.h"
+DLT_DECLARE_CONTEXT(mycontext);
+static bool s_register_dlt_context = true;
+#endif
+
 namespace mp {
 
-queue::queue() : return_token_count_ ( 0 ), do_stop_ ( false ) {
-    
+queue::queue( const char *name ) : name_(name), return_token_count_ ( 0 ), do_stop_ ( false ) {
+#if DD_USE_DLT
+    if( s_register_dlt_context ) {
+        DLT_REGISTER_CONTEXT(mycontext,"TEST","Test Context for Logging");   
+        s_register_dlt_context = false;
+    }
+#endif
     
 }
 void queue::emplace_msg ( typeinfo_wrapper&& typeinfo, std::unique_ptr< msg::base > msg, size_t token, bool return_msg )
@@ -39,6 +52,10 @@ void queue::dispatch ( queue::q_entry_type&& ent )
         return;
     }
 
+    
+#if DD_USE_DLT
+    DLT_LOG(mycontext,DLT_LOG_INFO,DLT_STRING(name().c_str()),DLT_STRING(ent.wrap_.name()));
+#endif    
     it->second ( std::move ( ent.msg_ ) );
 
 
@@ -78,6 +95,22 @@ bool queue::dispatch_pop()
     q_.pop_front();
 
 
+    
+    
+    const bool do_profiling = true;
+
+
+    clock_type::time_point tp_start;
+    
+    auto it = profiling_map_.end(); 
+    
+    
+    // find profiling map entry now while 'ent' is still valid (move below!). prevents having to store it temporarily (and does not count profiling_map_ overhead)
+    if( do_profiling ) {
+        it = profiling_map_.find( ent.wrap_ );
+        tp_start = clock_type::now();
+    }
+    
 
     if ( ent.return_token_ == TOKEN_NONE ) {
 
@@ -120,7 +153,18 @@ bool queue::dispatch_pop()
         }
     }
 
-
+    // profiling
+    if( do_profiling )
+    {
+        lock.lock();
+        if( it != profiling_map_.end() ) {
+    
+            it->second.sum_durations_ += (clock_type::now() - tp_start);
+            ++it->second.num_calls_;
+        }
+        
+    }
+    
 
     return true;
 
@@ -144,6 +188,28 @@ void queue::add_default_stop_handler()
     add_handler<msg::stop> ( [this] ( std::unique_ptr<msg::stop> m ) {
         stop();
     } );
+}
+
+void queue::print_profiling(std::ostream& os) {
+    os << "====  message queue profiling ==========================\n";
+    
+    for( auto & ent : profiling_map_ ) {
+        
+        if( ent.second.num_calls_ == 0 ) {
+            continue;   
+        }
+        std::chrono::microseconds us{std::chrono::duration_cast<std::chrono::microseconds>(ent.second.sum_durations_)};
+        
+        double seconds = (us.count() / 1000000.0);
+        
+        os << ent.first.name() << ":\t" << ent.second.num_calls_ << "\t" << seconds << "s\t(" << (seconds / ent.second.num_calls_) << "s/call)\n"; ;
+    
+        ent.second = msg_profiling();
+        
+    }
+    
+    
+    
 }
 
 

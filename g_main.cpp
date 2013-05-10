@@ -46,6 +46,11 @@
 
 #include "version.h"
 #include "log.h"
+
+#if DD_USE_DLT
+#include "dlt.h"
+#endif
+
 #if 0
 vid_device_t*	vid_dev;
 vid_vpage_t*	vid_page;
@@ -411,6 +416,10 @@ int g_main( int argc, char* argv[] )
 	char	text[128];
 	char	argline[128];
 
+#if DD_USE_DLT
+    DLT_REGISTER_APP("LOG","Test Application for Logging");
+#endif
+    
 // 	ca_wave_t	*wave;
 // 	ca_tga_t	*tga;
 	

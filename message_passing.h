@@ -168,10 +168,21 @@ class queue {
         queue * q_;
         typeinfo_wrapper typeinfo_;
     };
+    typedef std::chrono::high_resolution_clock clock_type;
     
+    struct msg_profiling {
+      
+        msg_profiling() : num_calls_(0), sum_durations_(clock_type::duration::zero()) {
+        }
+        
+        
+        size_t num_calls_;
+        clock_type::duration sum_durations_;
+    };
+  
 public:
     
-    queue();
+    queue( const char *name = "none" );
     
     
     template<typename T, typename... Args>
@@ -264,7 +275,7 @@ public:
         std::lock_guard<std::mutex> lock( central_mtx_ );
 
         handler_map_.emplace( typeinfo_wrapper(typeid(T)), h );    
-        
+        add_profiling_entry<T>();        
     }
     
     
@@ -272,6 +283,7 @@ public:
     void add_handler( std::function<void(std::unique_ptr<T>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
         handler_map_.emplace( typeinfo_wrapper(typeid(T)), msg_fwd<T>(h) );    
+        add_profiling_entry<T>();
     }
     
     
@@ -279,6 +291,8 @@ public:
     void add_handler_ret( std::function<std::unique_ptr<typename T::return_type>(std::unique_ptr<T>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
         handler_ret_map_.emplace( typeinfo_wrapper(typeid(T)), msg_ret_fwd<typename T::return_type, T>(h) );    
+        add_profiling_entry<T>();
+        
     }
     
     
@@ -295,10 +309,23 @@ public:
     
     void add_default_stop_handler();
     
+    
+    void print_profiling( std::ostream &os );
+    const std::string &name() {
+        return name_;   
+    }
 private:
+    
+    template<typename T>
+    void add_profiling_entry() {
+        profiling_map_.emplace( typeinfo_wrapper(typeid(T)), msg_profiling() );
+        
+    }
+    
     mutable std::mutex central_mtx_;
     std::condition_variable q_cond_;
     
+    std::string name_;
     size_t return_token_count_;
     bool do_stop_;
     
@@ -312,6 +339,9 @@ private:
     std::unordered_map<size_t,handler_type> token_handler_map_;
     
     std::unordered_map<size_t, return_entry_type> return_map_;
+    
+    
+    std::unordered_map<typeinfo_wrapper, msg_profiling,typeinfo_wrapper::hash> profiling_map_;
     
 };
 
@@ -424,6 +454,8 @@ private:
     };
     
     std::vector<entry> entries_;
+    
+    
     
 };    
 
