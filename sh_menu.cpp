@@ -923,7 +923,7 @@ void SHM_Draw()
 	LA_DrawGltexByName( "misc.tex.logo32", 640 - 32, 16, 0, 0, DRAW2D_DRAWMODE_ARGB );
 	LA_DrawString( "HE LIKES", 640 - 32 - 16 * 8, 32 );
 	LA_DrawString( "IT", 640 - 32 - 16 * 2, 16 );
-	LA_DrawString( BVERSION, 640 - 16 * ( sizeof(BVERSION) + 1 ), 0 );
+	LA_DrawString( "v"BVERSION, 640 - 16 * ( sizeof(BVERSION) + 1 ), 0 );
 
 //	printf( "page: %s\n", curpage );
 
@@ -972,8 +972,16 @@ void SHM_GetCurpage( char *string )
 	
 void SHM_Update( keyevent_t *_list)
 {
-	int listsize;
-    keyevent_t  *list, *validevent = NULL;
+	int	listsize, i;
+	char	onescape[256];
+	char	text[256];
+	int	entrynum;
+	int	active;
+	
+	keyevent_t	*list, *validevent = NULL;
+	hobj_t	*page;
+	hpair_t	*pair, *pair_active;
+
 
 	listsize = _list[0].sym;
 	list = &_list[1];
@@ -985,7 +993,7 @@ void SHM_Update( keyevent_t *_list)
 	}
 	
 	
-	for( int i = 0; i < listsize; i++ )
+	for( i = 0; i < listsize; i++ )
 	{
 		if( list[i].type != SYMTYPE_PRESS )
 			continue;
@@ -998,35 +1006,10 @@ void SHM_Update( keyevent_t *_list)
 
 	if( !validevent )
 		return;
-    
-    
-    bool used = SHM_Update( *validevent );
-    
-    if( used ) {
-        validevent->sym = gs_ksym(0);
-        
-    }
-    
-}
-bool SHM_Update( keyevent_t event ) {
-    if( !strcmp( curpage, "none" ))
-    {
-        return false;
-    }
-    char    onescape[256];
-    char    text[256];
-    int entrynum;
-    int active;
-    
-    
-    hobj_t  *page;
-    hpair_t *pair, *pair_active;
-    
-    keyevent_t *validevent = &event;
+
 	if( !powerless )
 	{
 
-        bool used = false;
 		page = FindClass( menu, curpage );
 
 		pair = FindHPair( page, "entrynum" );
@@ -1045,22 +1028,18 @@ bool SHM_Update( keyevent_t event ) {
 			HPairCastToString( onescape, pair );
 			printf( "leaving page %s\n", onescape );
 			SHP_ParseLine( onescape );
-			
+			validevent->sym = (gs_ksym)0;
 			SND_AddJob( snd_escape, SND_TYPE_LOCAL, 1, snd_vec );
-            
-            used = true;
-            break;
-			
+			break;
 				
 		case GSK_CUP:
 			active--;
 			if( active < 0 )
 				active = entrynum-1;
 
-			
+			validevent->sym = (gs_ksym)0;
 			SND_AddJob( snd_scroll, SND_TYPE_LOCAL, 1, snd_vec );
-			used = true;
-            break;
+			break;
 
 			
 
@@ -1069,21 +1048,16 @@ bool SHM_Update( keyevent_t event ) {
 			if( active >= entrynum )
 				active = 0;
 
-			
+			validevent->sym = (gs_ksym)0;
 			SND_AddJob( snd_scroll, SND_TYPE_LOCAL, 1, snd_vec );
-			used = true;
-            break;
+			break;
 
 		default:
 			SHM_UpdatePage( page, validevent, active );
-            used = (validevent->sym == gs_ksym(0)); // total crap!
-            break;
+			break;
 		}
 		sprintf( text, "%d", active );
 		strcpy( pair_active->value, text );
 		
-        return used;
 	}
-	
-	return false;
 }

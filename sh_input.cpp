@@ -180,12 +180,8 @@ void SHI_Update( keyevent_t *_list )
 	}
 }
 
-
-
-
 void SHI_SensibleUpdate( keyevent_t *_list )
 {
-    
 	int	listsize, i;
 	keyevent_t *list;
 

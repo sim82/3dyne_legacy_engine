@@ -42,6 +42,5 @@
 void SHM_StartUp( void );
 void SHM_Draw();
 void SHM_Update( keyevent_t * );
-bool SHM_Update( keyevent_t event );
 void SHM_SetCurpage( char *name );
 #endif

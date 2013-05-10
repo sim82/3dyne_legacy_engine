@@ -52,5 +52,5 @@ void SH_ALIAS_Join();
 void SHI_Join( char* command, char* symname );
 void SHI_WriteJoints( FILE * );
 void SHI_GetSymnamesByCommand( char *command, char *ptr[] );
-void SHI_FireKsym( keyevent_t event );
+
 #endif
