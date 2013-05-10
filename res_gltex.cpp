@@ -43,7 +43,7 @@
 
 #include "res_gltex.h"
 #include "res_gltexdefs.h"
-
+#include "shared/log.h"
 //#define HAVE_BOOLEAN
 
 
@@ -476,12 +476,19 @@ res_gltex_cache_t * Res_CacheInGLTEX_tga( res_gltex_register_t *reg )
 
 	fliph = true;
 
+    g_global_mp* gmp = g_global_mp::get_instance();
+    
+        
+        
+    
 	//
 	// mipmap hack
 	//
 	if ( gltex->width != gltex->height )
 	{
-		flag_mipmap_hint = false;
+        
+
+        flag_mipmap_hint = false;
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
 
@@ -523,6 +530,8 @@ res_gltex_cache_t * Res_CacheInGLTEX_tga( res_gltex_register_t *reg )
 				ptr -= image_width * 3 * 2;
 		}
 
+		
+		
 		gltex->comp = resGltexComponents_rgb;
 		Res_CreateGLTEX_rgb( image_width, image_height, image );
 
@@ -572,6 +581,7 @@ res_gltex_cache_t * Res_CacheInGLTEX_tga( res_gltex_register_t *reg )
 				ptr -= image_width * 4 * 2;
 		}			
 
+		
 		gltex->comp = resGltexComponents_rgba;		
 		Res_CreateGLTEX_rgba( image_width, image_height, image );
 		
@@ -598,6 +608,10 @@ res_gltex_cache_t * Res_CacheInGLTEX_tga( res_gltex_register_t *reg )
 */
 res_gltex_cache_t * Res_CacheInGLTEX_arr( res_gltex_register_t *reg )
 {
+    __error( "out of order\n" );
+    return 0;
+    
+#if 0
 	ib_file_t	*h;
 	int		filesize;
 	unsigned char	*buf;
@@ -682,6 +696,8 @@ res_gltex_cache_t * Res_CacheInGLTEX_arr( res_gltex_register_t *reg )
 	Res_CreateGLTEX_565( width, height, buf );
 
 	return gltex;
+    
+#endif
 }
 
 #if 0
@@ -1077,10 +1093,14 @@ void gltex::cache ( res* r ) {
     
     
 
-    
-
-    texobj = CreateTexObject( res_gltex->rs_->resobj );
-
+    g_global_mp* gmp = g_global_mp::get_instance();
+    {
+        
+        
+        
+        texobj = CreateTexObject( res_gltex->rs_->resobj );
+        
+    }
     if ( strstr( res_gltex->rs_->path, ".tga" ) )
     {       
         res_gltex->cs_ = Res_CacheInGLTEX_tga( res_gltex->rs_ );

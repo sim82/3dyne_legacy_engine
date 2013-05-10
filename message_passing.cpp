@@ -10,6 +10,7 @@
 #include <atomic>
 #include <functional>
 #include <algorithm>
+#include <chrono>
 
 #include <unistd.h>
 #include "message_passing.h"
@@ -140,10 +141,15 @@ bool queue::is_stopped() const
 }
 void queue::add_default_stop_handler()
 {
-    add_handlerx<msg::stop> ( [this] ( std::unique_ptr<msg::stop> m ) {
+    add_handler<msg::stop> ( [this] ( std::unique_ptr<msg::stop> m ) {
         stop();
     } );
 }
+
+
+
+
+
 } // namespace mp
 
 

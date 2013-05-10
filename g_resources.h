@@ -46,7 +46,7 @@
 
 #include "g_resourcesdefs.h"
 #include "shock.h"
-
+#include "g_message_passing.h"
 // class res_gltex_register_t;
 // struct res_sound_register_t;
 // struct res_lump_register_t;
@@ -55,6 +55,9 @@
 // struct res_sound_cache_t;
 // struct res_lump_cache_t;
 #include <iostream>
+
+
+
 namespace g_res {
 
 
@@ -171,10 +174,7 @@ public:
     };
     
     
-    manager() {
-        push_scope();
-        
-    }
+    manager();
     ~manager() {
         size_t id = pop_scope();
         if( id != 0 ) {
@@ -184,7 +184,7 @@ public:
     
     
     
-    void init_from_res_obj( hobj_t *hobj ) ;
+    
     void init_from_res_file( const char *filename ) ;
     void dump_scopes() ;
     
@@ -224,7 +224,24 @@ public:
         }
     }
     
+    
+//     template<typename TAG> 
+//     void get_async( const char * name, std::function<void(std::unique_ptr<msg::res_return<TAG> >)> h ) {
+//         
+//         mp::queue &q = g_global_mp::get_instance()->get_queue();
+//         
+//         q.add_
+//         
+//         res *r = get_unsafe( name );
+//         if( r->type_id() == traits<TAG>::id ) {
+//             return static_cast<res_impl<TAG> *>(r);
+//         } else {
+//             throw std::runtime_error( "wrong res type" );
+//         }
+//     }
+    
     void uncache( res *r ) {
+        std::lock_guard<std::mutex> lock(mtx_);
         loader_[r->type_id()]->uncache( r );
     }
     
@@ -237,10 +254,13 @@ public:
 private:
     manager( const manager & ) {}
     manager &operator=( const manager & ) { return *this; }
-    
+    void init_from_res_obj( hobj_t *hobj ) ;
     res_map res_;
     std::vector<loader::base *> loader_;
     std::vector<std::string> loader_names_;
+    
+    std::mutex mtx_;
+    
     class scope_internal {
     public:
     
@@ -280,6 +300,30 @@ private:
 
 
 
+}
+
+namespace msg {
+    template<typename TAG>
+    class res_return : public msg::base {
+    public:
+        res_return( g_res::res_impl<TAG> *res ) : res_(res) {}
+        
+        g_res::res_impl<TAG> *res_;
+    };
+    
+    
+    template<typename TAG>
+    class res_get : public msg::base {
+    public:
+        res_get( const char *name ) : name_(name) {            
+            
+        }
+        
+        
+        std::string name_;
+        typedef res_return<TAG> return_type;
+    };
+    
 }
 
 

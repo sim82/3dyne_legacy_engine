@@ -1,3 +1,39 @@
+/* 
+ * 3dyne Legacy Engine GPL Source Code
+ * 
+ * Copyright (C) 2013 Matthias C. Berger & Simon Berger.
+ * 
+ * This file is part of the 3dyne Legacy Engine GPL Source Code ("3dyne Legacy
+ * Engine Source Code").
+ *   
+ * 3dyne Legacy Engine Source Code is free software: you can redistribute it
+ * and/or modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ * 
+ * 3dyne Legacy Engine Source Code is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+ * Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along with
+ * 3dyne Legacy Engine Source Code.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ * 
+ * In addition, the 3dyne Legacy Engine Source Code is also subject to certain
+ * additional terms. You should have received a copy of these additional terms
+ * immediately following the terms and conditions of the GNU General Public
+ * License which accompanied the 3dyne Legacy Engine Source Code.
+ * 
+ * Contributors:
+ *     Matthias C. Berger (mcb77@gmx.de) - initial API and implementation
+ *     Simon Berger (simberger@gmail.com) - initial API and implementation
+ */ 
+
+
+#ifndef __message_passing_h
+#define __message_passing_h
+
 #include <iostream>
 #include <typeinfo>
 #include <vector>
@@ -32,6 +68,9 @@ namespace msg {
 
 namespace mp {
 
+const static bool sender_handler_check = false;
+    
+    
 class typeinfo_wrapper {
 public:
     typeinfo_wrapper( const std::type_info &t ) : t_(t) {}
@@ -138,7 +177,18 @@ public:
     template<typename T, typename... Args>
     void emplace( Args...  args ) {
         std::unique_lock<std::mutex> lock( central_mtx_ );
-        q_.emplace_back( typeinfo_wrapper(typeid(T)), make_unique<T>(std::forward<Args>(args)...), TOKEN_NONE, false );
+        
+        
+        auto typeinfo = typeinfo_wrapper(typeid(T));
+        if( sender_handler_check ) {
+            if( handler_map_.find(typeinfo) == handler_map_.end() ) {
+                std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
+                return;
+            }
+        }
+  
+        q_.emplace_back( std::move(typeinfo), make_unique<T>(std::forward<Args>(args)...), TOKEN_NONE, false );
+       
         
         lock.unlock();
         q_cond_.notify_one();
@@ -152,10 +202,18 @@ public:
     size_t emplace_return( queue *ret_queue, Args...  args ) {
         std::unique_lock<std::mutex> lock( central_mtx_ );
         
+        auto typeinfo = typeinfo_wrapper(typeid(T));
+        if( sender_handler_check ) {
+            if( handler_ret_map_.find(typeinfo) == handler_ret_map_.end() ) {
+                std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
+                return TOKEN_NONE;
+            }
+        }
+        
         size_t token = return_token_count_++;
         
         return_map_.emplace( token, return_entry_type(ret_queue, typeinfo_wrapper(typeid(typename T::return_type))) );
-        q_.emplace_back( typeinfo_wrapper(typeid(T)), make_unique<T>(std::forward<Args>(args)...), token, false );
+        q_.emplace_back( std::move(typeinfo), make_unique<T>(std::forward<Args>(args)...), token, false );
         
         
         lock.unlock();
@@ -169,10 +227,18 @@ public:
     void emplace_return_deluxe( queue &ret_queue, std::function<void(std::unique_ptr<typename T::return_type>)> h, Args...  args ) {
         std::unique_lock<std::mutex> lock( central_mtx_ );
         
+        auto typeinfo = typeinfo_wrapper(typeid(T));
+        if( sender_handler_check ) {
+            if( handler_ret_map_.find(typeinfo) == handler_ret_map_.end() ) {
+                std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
+                return;
+            }
+        }
+        
         size_t token = return_token_count_++;
         
         return_map_.emplace( token, return_entry_type(&ret_queue, typeinfo_wrapper(typeid(typename T::return_type))) );
-        q_.emplace_back( typeinfo_wrapper(typeid(T)), make_unique<T>(std::forward<Args>(args)...), token, false );
+        q_.emplace_back( std::move(typeinfo), make_unique<T>(std::forward<Args>(args)...), token, false );
         
         
         lock.unlock();
@@ -182,7 +248,9 @@ public:
         ret_queue.add_token_handler<T>(token, h);
         
     }
-   
+    
+    
+
    
     void dispatch( q_entry_type &&ent );
     
@@ -192,7 +260,7 @@ public:
     bool dispatch_pop();
     
     template<typename T>
-    void add_handler( handler_type h ) {
+    void add_handler_unsafe( handler_type h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
 
         handler_map_.emplace( typeinfo_wrapper(typeid(T)), h );    
@@ -201,7 +269,7 @@ public:
     
     
     template<typename T>
-    void add_handlerx( std::function<void(std::unique_ptr<T>)> h ) {
+    void add_handler( std::function<void(std::unique_ptr<T>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
         handler_map_.emplace( typeinfo_wrapper(typeid(T)), msg_fwd<T>(h) );    
     }
@@ -247,6 +315,118 @@ private:
     
 };
 
+
+class timer_source {
+public:
+    typedef std::chrono::high_resolution_clock clock_type;
+    
+    
+    timer_source() {
+        thread_ = std::thread( [this]() {
+            thread_function();
+        });
+        
+    }
+    
+    
+    void thread_function() {
+        std::unique_lock<std::mutex> lock( mtx_ );
+        while( true ) {
+            
+            clock_type::time_point next = next_timeout();
+            
+            cond_.wait_until( lock, next );
+            
+            
+            trigger_timers();
+            
+        }
+        
+    }
+    
+    
+    void trigger_timers() {
+        clock_type::time_point now = clock_type::now();
+        
+        
+        for( entry & ent : entries_ ) {
+            if( ent.next_trigger_ < now ) {
+                ent.handler_();
+                
+                if( ent.repeat_ ) {
+                    ent.next_trigger_ += ent.duration_;   
+                } else {
+                    ent.remove_ = true;   
+                }
+           }
+        }
+
+        
+        // remove expired timers
+        
+        auto it = std::remove_if( entries_.begin(), entries_.end(), []( const entry &ent ) {
+            return ent.remove_;
+        });
+        
+        entries_.erase( it, entries_.end() );
+        
+    }
+    
+    clock_type::time_point next_timeout() {
+     
+        clock_type::time_point smallest{clock_type::time_point::max()};
+        
+        for( entry & ent : entries_ ) {
+            smallest = std::min( smallest, ent.next_trigger_ );
+        }
+        
+        return smallest;
+    }
+    
+    template<typename T>
+    void add_timer( queue *q, const clock_type::duration &dur, bool repeat ) {
+        std::unique_lock<std::mutex> lock( mtx_ );
+        
+        entries_.push_back(entry());
+        
+        auto &ent = entries_.back();
+        
+        ent.handler_ = [=]() {
+            q->emplace<T>();
+        };
+        ent.duration_ = dur;
+        ent.repeat_ = repeat;
+        ent.next_trigger_ = clock_type::now() + dur;
+        
+        
+        lock.unlock();
+        cond_.notify_one();
+    }
+    
+private:
+    
+    std::mutex mtx_;
+    std::condition_variable cond_;
+    
+    std::thread thread_;
+    
+    struct entry {
+    public:
+        entry() : remove_(false) {}
+        std::function<void()> handler_;
+        
+        bool repeat_;
+        clock_type::duration duration_;
+        
+        clock_type::time_point next_trigger_;
+        
+        bool remove_;
+    };
+    
+    std::vector<entry> entries_;
+    
+};    
+
 }
 
 /*
@@ -256,3 +436,6 @@ namespace std {
     using mp::hash<typeinfo_wrapper>;
     
 }*/
+
+
+#endif

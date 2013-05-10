@@ -38,7 +38,7 @@
 #include "interfaces.h"
 #include "defs.h"
 #include "g_shared.h"
-
+#include "message_passing.h"
 
 const void * GetKey_resource( const void *obj )
 {
@@ -674,6 +674,7 @@ const char *traits<tag::lump>::name = "lump";
 
 void manager::init_from_res_obj ( hobj_t* hobj )
 {
+    
     if ( strcmp ( hobj->type, "resource" ) ) {
         printf ( "Warning: G_ResourceFromClass, class is not of type 'resource', ignore\n" );
         return;
@@ -715,6 +716,7 @@ void manager::init_from_res_obj ( hobj_t* hobj )
 
 void manager::init_from_res_file ( const char* name )
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     tokenstream_t   *ts;
     hobj_t      *root;
     hobj_t      *resobj;
@@ -747,6 +749,7 @@ manager& manager::get_instance()
 }
 res* manager::get_unsafe ( const char* name )
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     res_map::iterator it = res_.find ( std::string ( name ) );
 
     if ( it == res_.end() ) {
@@ -793,6 +796,7 @@ void manager::dump_scopes() {
 }
 size_t manager::push_scope()
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     scope_internal *s = new scope_internal ( scope_stack_.size() );
 
     scope_stack_.push_back ( s );
@@ -801,7 +805,7 @@ size_t manager::push_scope()
 }
 size_t manager::pop_scope()
 {
-    
+    std::lock_guard<std::mutex> lock(mtx_);
     scope_internal *s = scope_stack_.back();
     scope_stack_.pop_back();
 
@@ -822,6 +826,38 @@ size_t manager::pop_scope()
     delete s;
 
     return id;
+
+}
+manager::manager()
+{
+    push_scope();
+    
+    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
+    bg_q.add_handler_ret<msg::res_get<tag::gltex> >( [this] (std::unique_ptr<msg::res_get<tag::gltex> > m ) {
+        
+        std::lock_guard<std::mutex> lock(g_global_mp::get_instance()->gl_mtx_);
+        
+        res_impl<tag::gltex> *res = get<tag::gltex>( m->name_.c_str() );
+        
+        return mp::make_unique<msg::res_return<tag::gltex> >( res );
+        
+    } );
+    
+    
+    
+//     void get_async( const char * name, std::function<void(std::unique_ptr<msg::res_return<TAG> >)> h ) {
+//         
+//         mp::queue &q = g_global_mp::get_instance()->get_queue();
+//         
+//         q.add_
+//         
+//         res *r = get_unsafe( name );
+//         if( r->type_id() == traits<TAG>::id ) {
+//             return static_cast<res_impl<TAG> *>(r);
+//         } else {
+//             throw std::runtime_error( "wrong res type" );
+//         }
+//     }
 
 }
 

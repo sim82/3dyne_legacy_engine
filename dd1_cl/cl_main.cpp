@@ -161,13 +161,20 @@ const char * CL_RunFrame( const char *in )
 	}
 	else
 	{		
+        msec_t old_begin_time = cl_time_begin_frame;
+        msec_t old_end_time = cl_time_end_frame;
+        
 		cl_time_begin_frame = cl_time_end_frame;
 		cl_time_end_frame = atoi( tkn );
 
-		if ( cl_time_end_frame <= cl_time_begin_frame )
+		if ( cl_time_end_frame < cl_time_begin_frame )
 		{
-			__warning( "time end < time begin\n" );
+            
+            
+			__warning( "time end < time begin %d %d\n", cl_time_begin_frame, cl_time_end_frame );
 			TFUNC_LEAVE;
+//             cl_time_begin_frame = old_begin_time;
+//             cl_time_end_frame = old_end_time;
 			return "fail";
 		}
 		else

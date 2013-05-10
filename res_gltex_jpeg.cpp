@@ -46,6 +46,7 @@
 #include "res_gltexdefs.h"
 //#include "s_mem.h"
 #include "shock.h"
+#include "message_passing.h"
 
 void *_MM_Malloc( int );
 void _MM_Free( void * );
@@ -329,6 +330,7 @@ res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
 	__message( "%s: %d %d\n", reg->path, gltex->width, gltex->height );
 
 	gltex->comp = resGltexComponents_rgb;
+    
 	Res_CreateGLTEX_rgb( cinfo.output_width, cinfo.output_height, image );
 //	__error( "good\n" );
 

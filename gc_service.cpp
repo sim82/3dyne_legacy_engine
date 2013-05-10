@@ -155,6 +155,20 @@ static WSADATA winsockdata;
 FILE	*h_sendudp = NULL;
 FILE	*h_recvudp = NULL;
 
+void bg_thread_func() {
+ 
+    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
+    
+    
+  
+    
+    while( !bg_q.is_stopped() ) {
+        bg_q.dispatch_pop();   
+        
+    }
+    
+}
+
 
 void GC_StartRemoteGame( void );
 void GC_DropRemoteGame( void );
@@ -1316,13 +1330,26 @@ void GC_MainLoop()
 
     std::auto_ptr<g_res::manager::scope_guard> res_scope;
     
+
+    
     
     mp::queue &q = g_global_mp::get_instance()->get_queue();
+    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
+    
+    
+    std::thread bg_thread( bg_thread_func );
+    
+    {
+        auto h = [](std::unique_ptr<msg::res_return<g_res::tag::gltex>> m ) {
+            DD_LOG << "got async resource: " << m->res_->cached() << " " << m->res_->name() << "\n";;
+        };
+        q.emplace_return_deluxe<msg::res_get<g_res::tag::gltex>>( q, h, "gltex.metal.metal20_1" );
+    }
     
     
     q.add_default_stop_handler();
     
-    q.add_handlerx<msg::key_event>( [] (std::unique_ptr<msg::key_event> m ) {
+    q.add_handler<msg::key_event>( [] (std::unique_ptr<msg::key_event> m ) {
         std::cout << "key_event: " << m->event_.sym << "\n";
         
         bool used = false;
@@ -1341,11 +1368,7 @@ void GC_MainLoop()
     size_t oldest_mouse_event = size_t(-1);
     size_t newest_mouse_event = 0;
     
-    q.add_handlerx<msg::mouse_event>( [&] (std::unique_ptr<msg::mouse_event> m ) {
-        
-        int now = SYS_GetMsec();
-        //std::cout << "delta: " << now - m->ts_ << "\n";
-        
+    q.add_handler<msg::mouse_event>( [&] (std::unique_ptr<msg::mouse_event> m ) {
         md_x += m->md_x_;
         md_y += m->md_y_;
         
@@ -1354,7 +1377,7 @@ void GC_MainLoop()
         
     } );
     
-    q.add_handlerx<msg::gc_quit>( [&] (std::unique_ptr<msg::gc_quit> m ) {
+    q.add_handler<msg::gc_quit>( [&] (std::unique_ptr<msg::gc_quit> m ) {
         if ( h_sendudp )
         {
             fclose( h_sendudp );
@@ -1363,18 +1386,24 @@ void GC_MainLoop()
         {
             fclose( h_recvudp );
         }
-        Exit();
+        // request queue stop
+        q.emplace<msg::stop>();
+        //Exit();
         
     });
     
     
-    q.add_handlerx<msg::gc_start_demo>( [&] (std::unique_ptr<msg::gc_start_demo> m ) {
+    q.add_handler<msg::gc_start_demo>( [&] (std::unique_ptr<msg::gc_start_demo> m ) {
+        g_global_mp* gmp = g_global_mp::get_instance();
+        std::lock_guard<std::mutex> lock( gmp->gl_mtx_ );
+        DD_LOG << "lock2\n";
         GC_CleanUp( gc_state );
         GC_InitDemo( gc_state );
         GC_InitGame( gc_state );
+        DD_LOG << "unlock2\n";
     } );
     
-    q.add_handlerx<msg::gc_start_single>( [&] (std::unique_ptr<msg::gc_start_single> m ) {
+    q.add_handler<msg::gc_start_single>( [&] (std::unique_ptr<msg::gc_start_single> m ) {
         res_scope.reset();
         res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
         gc_state->u_start_single = false;
@@ -1383,7 +1412,7 @@ void GC_MainLoop()
         GC_InitGame( gc_state );
     } );
     
-    q.add_handlerx<msg::gc_drop_game>( [&] (std::unique_ptr<msg::gc_drop_game> m ) {
+    q.add_handler<msg::gc_drop_game>( [&] (std::unique_ptr<msg::gc_drop_game> m ) {
         gc_state->u_drop_game = false;
         GC_CleanUp( gc_state );
         
@@ -1394,7 +1423,37 @@ void GC_MainLoop()
     } );
     
     ms_wfbegin = SYS_GetMsec();
-    q.add_handlerx<msg::client_frame>( [&] (std::unique_ptr<msg::client_frame> m ) {
+    
+    q.add_handler<msg::world_frame>( [&] (std::unique_ptr<msg::world_frame> m ) {
+        int now = SYS_GetMsec();
+        gc_state->time = now;
+//         DD_LOG << "world frame\n";
+        
+        ms_wfbegin = SYS_GetMsec();
+        inactive = 0;
+//             SND_Update();
+        gc_localworldframe++;
+
+//             if( !(gc_localworldframe%10) )
+//                 SHV_ScrollSOut();
+        
+        ms_wfbegin = SYS_GetMsec();
+
+        if ( g_st )
+        {               
+            pmod.lon = g_st->view_lon;
+            pmod.lat = g_st->view_lat;
+        }
+
+        GC_RunServerFrame();
+
+//             rfalltime = 0;
+//             rfnum = 0;
+        
+        wf_mdx = wf_mdy = 0;
+    } );
+    
+    q.add_handler<msg::client_frame>( [&] (std::unique_ptr<msg::client_frame> m ) {
         
         //I_Update();
         
@@ -1404,7 +1463,7 @@ void GC_MainLoop()
         gc_state->time = now;
 
 
-        if( newest_mouse_event != 0 ) {
+        if( false && newest_mouse_event != 0 ) {
             DD_LOG << "event latency: " << (now - newest_mouse_event) << " - " << (now - oldest_mouse_event) << "\n";
             
             oldest_mouse_event = size_t(-1);
@@ -1412,31 +1471,31 @@ void GC_MainLoop()
         }
         
         
-        if( ( now - ms_wfbegin ) >= MSEC_WF )
-        {
-            ms_wfbegin = SYS_GetMsec();
-            inactive = 0;
-//             SND_Update();
-            gc_localworldframe++;
-
-//             if( !(gc_localworldframe%10) )
-//                 SHV_ScrollSOut();
-            
-            ms_wfbegin = SYS_GetMsec();
-
-            if ( g_st )
-            {               
-                pmod.lon = g_st->view_lon;
-                pmod.lat = g_st->view_lat;
-            }
-
-            GC_RunServerFrame();
-
-//             rfalltime = 0;
-//             rfnum = 0;
-            
-            wf_mdx = wf_mdy = 0;
-        }
+//         if( ( now - ms_wfbegin ) >= MSEC_WF )
+//         {
+//             ms_wfbegin = SYS_GetMsec();
+//             inactive = 0;
+// //             SND_Update();
+//             gc_localworldframe++;
+// 
+// //             if( !(gc_localworldframe%10) )
+// //                 SHV_ScrollSOut();
+//             
+//             ms_wfbegin = SYS_GetMsec();
+// 
+//             if ( g_st )
+//             {               
+//                 pmod.lon = g_st->view_lon;
+//                 pmod.lat = g_st->view_lat;
+//             }
+// 
+//             GC_RunServerFrame();
+// 
+// //             rfalltime = 0;
+// //             rfnum = 0;
+//             
+//             wf_mdx = wf_mdy = 0;
+//         }
 
         
         
@@ -1456,7 +1515,15 @@ void GC_MainLoop()
         wf_mdy += md_y;
         
         md_x = md_y = 0;
-        GC_RunClientFrame();
+        
+        g_global_mp* gmp = g_global_mp::get_instance();
+        
+        
+        {
+            std::lock_guard<std::mutex> lock( gmp->gl_mtx_ );
+            GC_RunClientFrame();
+        }
+        
         int ms2 = SYS_GetMsec();
         ms_rfdelta = ms2-ms_rfbegin;
 //        usleep(1000000);
@@ -1468,12 +1535,26 @@ void GC_MainLoop()
         
     } );
     
+    
     q.emplace<msg::gc_start_demo>();
     
     q.emplace<msg::client_frame>();
-    while( true ) {
+    
+    mp::timer_source timer;
+    
+    timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
+    
+    
+    
+    while( !q.is_stopped() ) {
         q.dispatch_pop();
     }
+    
+    
+    bg_q.stop();
+    bg_thread.join();
+    
+    Exit();
     
 	for( ;; )
 	{
