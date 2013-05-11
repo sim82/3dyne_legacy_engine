@@ -215,5 +215,5 @@ if(WIN32)
   
   target_link_libraries( dd jpeg bz2 ws2_32 opengl32 winmm SDL  )
 else()
-  target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 GL )
+  target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 GL GLEW )
 endif()

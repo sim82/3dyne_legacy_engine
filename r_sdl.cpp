@@ -1,8 +1,12 @@
 #define vgl_notextern
 
+#include <GL/glew.h>
+
 #include "interfaces.h"
 #include "r_private.h"
 #include "r_interface.h"
+
+
 
 #ifdef win32_x86
 #include <SDL.h>
@@ -30,6 +34,23 @@ gl_info_t       *r_glinfo = NULL;
   ====================
 */
 void I_SDLStartUp();
+
+void TestOpenGL20() {
+	GLenum err = glewInit();
+	if ( err!=GLEW_OK )	{
+		//Problem: glewInit failed, something is seriously wrong.
+		__error("glewInit failed, aborting.");
+	}
+
+	GLuint index_buffer_obj;
+	glGenBuffers(1, &index_buffer_obj);
+
+	GLuint vertex_buffer_obj;
+	glGenBuffers(1, &vertex_buffer_obj);
+
+
+}
+
 void R_StartUp()
 {
 	TFUNC_ENTER;
@@ -58,6 +79,7 @@ void R_StartUp()
 	r_glinfo->texenv_units = 1;
 	r_glinfo->texenv_have_add = 1;
 
+	TestOpenGL20();
 
 	glBegin ( GL_POLYGON );
 
