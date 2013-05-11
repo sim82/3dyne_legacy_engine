@@ -61,9 +61,9 @@ extern gl_info_t	*r_glinfo;
 //#include "glx_service.h"
 
 //#include "vgl_interface.h"
-#include "vglx_interface.h"
+// #include "vglx_interface.h"
 
-
+#if 0
 extern Window		g_window;
 extern Window		g_rootwin;
 extern Display		*g_display;
@@ -71,7 +71,7 @@ extern char		*displayname;
 extern int		g_scrnum;
 extern XVisualInfo	*g_visinfo;
 extern GLXContext	g_ctx;
-
+#endif
 // internal Abstraction
 
 void R_X11StartUp();  // open X11 window

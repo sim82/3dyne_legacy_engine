@@ -1379,6 +1379,9 @@ void GC_MainLoop()
         
     } );
     
+#define ASYNC_MAINLOOP 1
+    
+#if ASYNC_MAINLOOP
     q.add_handler<msg::gc_quit>( [&] (std::unique_ptr<msg::gc_quit> m ) {
         if ( h_sendudp )
         {
@@ -1485,7 +1488,7 @@ void GC_MainLoop()
         gc_state->time = now;
 
 
-        if( false && newest_mouse_event != 0 ) {
+        if( !false && newest_mouse_event != 0 ) {
             DD_LOG << "event latency: " << (now - newest_mouse_event) << " - " << (now - oldest_mouse_event) << "\n";
             
             oldest_mouse_event = size_t(-1);
@@ -1548,10 +1551,10 @@ void GC_MainLoop()
         
         int ms2 = SYS_GetMsec();
         ms_rfdelta = ms2-ms_rfbegin;
-//         usleep(0);
+        
 //         sched_yield();
         
-        I_Update();
+        
         q.emplace<msg::swap_buffer>();
         
         
@@ -1560,35 +1563,41 @@ void GC_MainLoop()
     
     q.add_handler<msg::swap_buffer>( [&] (std::unique_ptr<msg::swap_buffer> m ) {
         R_SwapBuffer();    
+        //usleep(1000000);
+        I_Update();
         q.emplace<msg::client_frame>();
     });
-    
+#endif
     
     q.add_handler<msg::print_queue_profiling>( [&] (std::unique_ptr<msg::print_queue_profiling> m ) {
         q.print_profiling(std::cout);
     });
     
+    
+#if ASYNC_MAINLOOP
     q.emplace<msg::gc_start_demo>();
     
     q.emplace<msg::client_frame>();
-    
+#endif
     mp::timer_source timer;
     
     timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
     timer.add_timer<msg::print_queue_profiling>( &q, std::chrono::seconds(5), true );
     
     
-    
+#if ASYNC_MAINLOOP
     while( !q.is_stopped() ) {
         q.dispatch_pop();
     }
-    
+
     
     bg_q.stop();
     bg_thread.join();
     
     Exit();
+#endif    
     
+#if !ASYNC_MAINLOOP
 	for( ;; )
 	{
 		static int	rfalltime = 0, rfnum = 0;
@@ -1697,10 +1706,14 @@ void GC_MainLoop()
 		{
 			GC_NetHandleLocalPort( gc_state );
 		}
-
-
-		GC_ClientInputUpdate();
 		
+		
+		I_Update();
+
+		while( q.dispatch_pop_noblock() ) {}
+		
+		GC_ClientInputUpdate();
+		md_x = md_y = 0;
 
 		if( ( now - ms_wfbegin ) >= MSEC_WF )
 		{
@@ -1746,7 +1759,7 @@ void GC_MainLoop()
 			ms1 = SYS_GetMsec();
 			ms_rfbegin = ms1;
 			GC_RunClientFrame();
-
+            R_SwapBuffer();    
 #if D3DYNE_OS_UNIXLIKE
 			{
 				struct timespec ts;
@@ -1789,6 +1802,7 @@ void GC_MainLoop()
 		loops++;
 
 	}
+#endif
 	TFUNC_LEAVE;
 }
 
@@ -2077,7 +2091,7 @@ void GC_ClientInputUpdate()
 	char	menupage[256];
 	TFUNC_ENTER;
 
-	I_Update();
+	//I_Update();
 	
 	wf_mdx += md_x;
 	wf_mdy += md_y;

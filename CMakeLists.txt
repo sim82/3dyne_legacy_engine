@@ -33,8 +33,13 @@ cmake_minimum_required( VERSION 2.8 )
 
 add_subdirectory( dd1_cl )
 add_subdirectory( dd1_sv )
+
+set( USE_DLT 0 )
+
+
 if(USE_DLT)
     add_subdirectory( dlt )
+    add_definitions( -DDD_USE_DLT=1 )
 endif()
 
 if(WIN32)
@@ -74,7 +79,7 @@ else()
   set( CMAKE_CXX_FLAGS "-Wall -std=c++11" )
 
 #   set( SS_SRC r_glx.cpp i_x11.cpp glx_service.cpp )
-  set( SS_SRC r_sdl )
+  set( SS_SRC r_pan )
   set( ALL_HEADERS )
 endif()
 
@@ -168,6 +173,7 @@ set( ENGINE_SRC
 	baked_hobj.cpp
 	g_message_passing.cpp
 	message_passing.cpp
+	pan.cpp
 	)
 
 set( R_FAKE_SRC r_fake/g_blockmap.cpp
@@ -240,5 +246,5 @@ if(WIN32)
   add_executable( colrm_dh colrm_dh.cpp )
   target_link_libraries( dd jpeg bz2 ws2_32 opengl32  SDL winmm )
 else()
-  target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 GL )
+  target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext Xi pthread jpeg SDL bz2 GL )
 endif()

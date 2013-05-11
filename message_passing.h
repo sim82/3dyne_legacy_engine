@@ -268,7 +268,10 @@ public:
     
     void dispatch_ret( q_entry_type &&ent, return_entry_type ret_ent, size_t token );
    
+    
     bool dispatch_pop();
+    bool dispatch_pop_noblock();
+    
     
     template<typename T>
     void add_handler_unsafe( handler_type h ) {
@@ -321,6 +324,8 @@ private:
         profiling_map_.emplace( typeinfo_wrapper(typeid(T)), msg_profiling() );
         
     }
+    
+    bool dispatch_pop_internal(std::unique_lock< std::mutex >& lock);
     
     mutable std::mutex central_mtx_;
     std::condition_variable q_cond_;

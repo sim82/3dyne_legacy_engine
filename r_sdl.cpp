@@ -32,7 +32,7 @@ int     md_x, md_y;
 gl_info_t       *r_glinfo = NULL;
 
 
-#define USE_INPUT_THREAD (1)
+#define USE_INPUT_THREAD (0)
 
 /*
   ====================

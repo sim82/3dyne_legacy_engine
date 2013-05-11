@@ -11,7 +11,7 @@
 #include <functional>
 #include <algorithm>
 #include <chrono>
-
+#include <cassert>
 #include <unistd.h>
 #include "message_passing.h"
 
@@ -91,11 +91,33 @@ bool queue::dispatch_pop()
         return false;
     }
 
+    
+    // q_ can not be empty
+    dispatch_pop_internal( lock );
+    
+}
+
+bool queue::dispatch_pop_noblock() {
+    std::unique_lock<std::mutex> lock ( central_mtx_ );
+    
+    if( !q_.empty() ) {
+        dispatch_pop_internal( lock );
+        return true;
+        
+    } else {
+        return false;
+        
+    }
+}
+
+
+bool queue::dispatch_pop_internal( std::unique_lock<std::mutex> &lock ) {
+    // this function _can_ release the lock before returning
+    
+    assert( !q_.empty() );
+    
     q_entry_type ent {std::move ( q_.front() ) };
     q_.pop_front();
-
-
-    
     
     const bool do_profiling = true;
 
@@ -211,6 +233,7 @@ void queue::print_profiling(std::ostream& os) {
     
     
 }
+
 
 
 
