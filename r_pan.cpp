@@ -41,6 +41,14 @@ void R_StartUp()
 	r_fullscreen = SHP_GetVar ( "r_fullscreen" );
 
     pan::gl_context::config cfg;
+    
+    cfg.fullscreen_ = true;
+    
+    
+//     if( cfg.fullscreen_ ) {
+//         SHP_SetVar("r_devicewidth", "2560", 0 );
+//         SHP_SetVar("r_deviceheight", "1440", 0 );
+//     }
     cfg.width_ = r_devicewidth->ivalue;
     cfg.height_ = r_deviceheight->ivalue;
     
@@ -117,7 +125,7 @@ void R_ShutDown()
 
 
     //TODO!
-    
+    s_gl_context.release_resources();
 	TFUNC_LEAVE;
 }
 

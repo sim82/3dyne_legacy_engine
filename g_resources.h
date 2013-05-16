@@ -241,7 +241,7 @@ public:
 //     }
     
     void uncache( res *r ) {
-        std::lock_guard<std::mutex> lock(mtx_);
+//        std::lock_guard<std::mutex> lock(mtx_);
         loader_[r->type_id()]->uncache( r );
     }
     

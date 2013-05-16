@@ -814,7 +814,7 @@ size_t manager::pop_scope()
     while ( !s->list_.empty() ) {
     
     //    std::cout << "pop_scope uncache: " << s->list_.front().name() << "\n";
-        getchar();
+      //  getchar();
         uncache ( &s->list_.front() );
         
         s->list_.pop_front();

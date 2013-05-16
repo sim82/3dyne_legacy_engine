@@ -4,6 +4,7 @@
 
 #include <X11/Xlib.h>
 #include <GL/glx.h>
+#include <memory>
 #include "message_passing.h"
 
 namespace pan {
@@ -50,7 +51,7 @@ namespace pan {
 //     Display *display_;
 //     
 // };
-    
+class xrandr_mode_setter;
 class gl_context {
 public:
     struct config {
@@ -65,6 +66,8 @@ public:
     
     gl_context();
     gl_context( const config &cfg );
+    ~gl_context();
+    
     void set_config( const config &cfg );
     
     void release_resources();
@@ -111,6 +114,8 @@ private:
     };
     
     xi_warp_state xi_warp_;
+    
+    std::unique_ptr<xrandr_mode_setter> mode_setter_;
 };
     
     

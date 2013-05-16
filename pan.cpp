@@ -1,5 +1,6 @@
 #include "X11/extensions/XInput2.h"
 #include "X11/extensions/XInput.h"
+#include <X11/extensions/Xrandr.h>
 #include <X11/cursorfont.h>
 #include <cstring>
 
@@ -23,8 +24,225 @@ gl_context::gl_context(const pan::gl_context::config& cfg)
     
 }
 
+static double mode_refresh (XRRModeInfo *mode_info)
+{
+    double rate;
+    unsigned int vTotal = mode_info->vTotal;
 
+    if (mode_info->modeFlags & RR_DoubleScan) {
+        /* doublescan doubles the number of lines */
+        vTotal *= 2;
+    }
 
+    if (mode_info->modeFlags & RR_Interlace) {
+        /* interlace splits the frame into two fields */
+        /* the field rate is what is typically reported by monitors */
+        vTotal /= 2;
+    }
+
+    if (mode_info->hTotal && vTotal)
+        return ((double) mode_info->dotClock / ((double) mode_info->hTotal * (double) vTotal));
+    else {
+        return 0;
+    }
+    
+}
+#if 1
+class xrandr_mode_setter {
+public:
+    
+    class server_grab {
+        Display *d_;
+        
+    public:
+        
+        
+        server_grab() = delete;
+        server_grab( const server_grab &) = delete;
+        server_grab& operator=( const server_grab &) = delete;
+        
+        server_grab( Display *d = 0 ) : d_(d) {
+            if( d_ != 0 ) {
+                XGrabServer( d_ );
+            }
+        }
+        ~server_grab() {
+            if( d_ != 0 ) {
+                XUngrabServer( d_ );
+            }
+        }
+        
+    };
+    
+    bool delta_compare( double v1, double v2 ) {
+        return fabs( v1 - v2 ) < 0.5;
+        
+    }
+    
+    xrandr_mode_setter( Display *display, Window root, int width, int height ) 
+    : initial_mode_( None )
+    , display_(display), root_(root)
+    {
+        server_grab grab(display_);
+        res = XRRGetScreenResourcesCurrent (display, root);
+        RROutput primary_output = XRRGetOutputPrimary(display, DefaultRootWindow(display_));
+        info = XRRGetOutputInfo( display, res, primary_output );
+        
+        crtc_info = XRRGetCrtcInfo( display, res, info->crtc );
+        
+        initial_mode_ = crtc_info->mode;
+        
+        RRMode target_mode = None;
+        for( int i = 0; i != info->nmode; ++i ) {
+            
+            RRMode mode = info->modes[i];
+            
+            for( int j = 0; j < res->nmode; ++j ) {
+                if( mode == res->modes[j].id ) {
+                    XRRModeInfo *mode_info = res->modes + j;
+                    
+                    std::cout << mode_info->width << " " << mode_info->height << " " << mode_refresh(mode_info) << ((mode == initial_mode_) ? "*" : "") << "\n";
+                    if( mode_info->width == width && mode_info->height == height && delta_compare( mode_refresh(mode_info), 60 )) {
+                        std::cout << "xxx\n";
+                        target_mode = mode;
+                    }
+                    
+                    
+                }
+                
+            }
+            
+        }
+        
+        std::cout << "setting target mode: " << target_mode << "\n";
+        
+        if( target_mode != None ) {
+            XRRSetCrtcConfig( display, res, info->crtc, CurrentTime, crtc_info->x, crtc_info->y, target_mode, crtc_info->rotation, crtc_info->outputs, crtc_info->noutput );
+    
+            XRRFreeCrtcInfo(crtc_info);
+            XRRCrtcInfo *crtc_info = XRRGetCrtcInfo( display, res, info->crtc );
+        } else {
+            XRRFreeCrtcInfo(crtc_info);
+            initial_mode_ = None;
+        }
+        
+    }
+    
+    ~xrandr_mode_setter() {
+        std::cout << "setting initial mode: " << initial_mode_ << "\n";
+        if( initial_mode_ != None ) {
+            server_grab grab(display_);
+            
+            XRRSetCrtcConfig( display_, res, info->crtc, CurrentTime, crtc_info->x, crtc_info->y, initial_mode_, crtc_info->rotation, crtc_info->outputs, crtc_info->noutput );
+            XRRFreeCrtcInfo(crtc_info);
+        }
+        
+    }
+    RRMode initial_mode_;
+    
+    Display *display_;
+    Window root_;
+    
+    XRRScreenResources *res;
+    XRROutputInfo* info;
+    
+    XRRCrtcInfo *crtc_info;
+
+    
+};
+#else
+class xrandr_mode_setter {
+public:
+    
+    bool delta_compare( double v1, double v2 ) {
+        return fabs( v1 - v2 ) < 0.5;
+        
+    }
+    
+    xrandr_mode_setter( Display *display, Window root, int width, int height ) 
+    : initial_trans_attr_( 0 )
+    , display_(display), root_(root)
+    {
+        res = XRRGetScreenResourcesCurrent (display, root);
+        RROutput primary_output = XRRGetOutputPrimary(display, DefaultRootWindow(display_));
+        info = XRRGetOutputInfo( display, res, primary_output );
+        
+        crtc_info = XRRGetCrtcInfo( display, res, info->crtc );
+        
+        initial_mode = crtc_info->mode;
+        double phys_width = 0;
+        double phys_height = 0;
+        
+        for( int j = 0; j < res->nmode; ++j ) {
+            if( initial_mode == res->modes[j].id ) {
+                XRRModeInfo *mode_info = res->modes + j;
+                
+                phys_width = mode_info->width;
+                phys_height = mode_info->height;
+            }
+        }
+        
+                
+        double scale_x = (phys_width / width);
+        double scale_y = (phys_height / height);
+        XGrabServer( display_ );
+        
+        XRRGetCrtcTransform( display_, info->crtc, &initial_trans_attr_ );
+        
+        //initial_trans_ = trans_attr->currentTransform;
+        
+        
+        
+        XTransform trans;
+        
+        for( int i = 0; i < 3; ++i ) {
+            //trans.matrix[i][i] = 1.0;
+            trans.matrix[0][i] = 0.0;
+            trans.matrix[1][i] = 0.0;
+            trans.matrix[2][i] = 0.0;
+        }
+        std::cout << "setting scale: " << scale_x << " " << scale_y << " | " << initial_trans_attr_->currentFilter << " | " << initial_trans_attr_->currentNparams << "\n";
+        trans.matrix[0][0] = XDoubleToFixed( scale_x );
+        trans.matrix[1][1] = XDoubleToFixed( scale_y );
+        trans.matrix[2][2] = 1.0;
+        
+        XRRSetCrtcTransform( display_, info->crtc, &trans, "nearest", 0, 0 );
+        XUngrabServer( display_ );
+//         XRRSetCrtcConfig( display_, res, info->crtc, CurrentTime, crtc_info->x, crtc_info->y, initial_mode, crtc_info->rotation, crtc_info->outputs, crtc_info->noutput );
+    
+//         trans.filter = "bilinear";
+//         trans.nparams = 0;
+//         trans.params = 0;
+        
+    }
+    
+    ~xrandr_mode_setter() {
+      
+        if( initial_trans_attr_ != 0 ) {
+            
+            XRRSetCrtcTransform( display_, info->crtc, &initial_trans_attr_->currentTransform, initial_trans_attr_->currentFilter, initial_trans_attr_->currentParams, initial_trans_attr_->currentNparams );
+//             XRRSetCrtcConfig( display_, res, info->crtc, CurrentTime, crtc_info->x, crtc_info->y, initial_mode, crtc_info->rotation, crtc_info->outputs, crtc_info->noutput );
+            
+            //XRRSetCrtcConfig( display_, res, info->crtc, CurrentTime, crtc_info->x, crtc_info->y, initial_mode_, crtc_info->rotation, crtc_info->outputs, crtc_info->noutput );
+            XRRFreeCrtcInfo(crtc_info);
+        }
+        
+    }
+    
+    
+    Display *display_;
+    Window root_;
+    
+    XRRScreenResources *res;
+    XRROutputInfo* info;
+    RRMode initial_mode;
+    XRRCrtcInfo *crtc_info;
+
+    XRRCrtcTransformAttributes *initial_trans_attr_;
+    
+};
+
+#endif
 
 void gl_context::set_config(const gl_context::config& cfg) {
     
@@ -67,6 +285,8 @@ void gl_context::set_config(const gl_context::config& cfg) {
     XVisualInfo *visinfo = 0;
     
     if( start_window ) {
+        
+        
         display_ = XOpenDisplay( NULL );
         scrnum_ = DefaultScreen( display_ );
         
@@ -107,18 +327,98 @@ void gl_context::set_config(const gl_context::config& cfg) {
         Window root;
         root = RootWindow( display_, scrnum_ );
         
+        
+        mode_setter_.reset( new xrandr_mode_setter(display_, root, cfg.width_, cfg.height_) );
+        
         XSetWindowAttributes attr;
         attr.background_pixel = 0;
         attr.border_pixel = 0;
         attr.colormap = XCreateColormap( display_, root, visinfo->visual, AllocNone );
         attr.event_mask =  StructureNotifyMask | ExposureMask | KeyPressMask | FocusChangeMask;
+        
         unsigned long mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
+        
+        if( cfg.fullscreen_ ) {
+            attr.override_redirect = 1;
+            mask |= CWOverrideRedirect;
+        
+            
+                    
+        }
+        
+        
+        
+        {
+            XRRScreenResources *res = XRRGetScreenResourcesCurrent (display_, root);
+            RROutput primary_output = XRRGetOutputPrimary(display_, DefaultRootWindow(display_));
+            XRROutputInfo* info = XRRGetOutputInfo( display_, res, primary_output );
+            
+            
+            
+            XRRCrtcInfo *crtc_info = XRRGetCrtcInfo( display_, res, info->crtc );
+            
+            RRMode current_mode = crtc_info->mode;
+            
+            
+            for( int i = 0; i != info->nmode; ++i ) {
+            
+                RRMode mode = info->modes[i];
+                
+                for( int j = 0; j < res->nmode; ++j ) {
+                    if( mode == res->modes[j].id ) {
+                        XRRModeInfo *mode_info = res->modes + j;
+                        
+                        std::cout << mode_info->width << " " << mode_info->height << " " << mode_refresh(mode_info) << ((mode == current_mode) ? "*" : "") << "\n";
+                        
+                        
+                        
+                    }
+                    
+                }
+                
+            }
+            
+//             int num_sizes;
+//             XRRScreenSize* xrrs   = XRRSizes(display_, 0, &num_sizes);
+//  
+//             for(int i = 0; i < num_sizes; i ++) {
+//                 short   *rates;
+//                 int     num_rates;
+// 
+//                 printf("\n\t%2i : %4i x %4i   (%4imm x%4imm ) ", i, xrrs[i].width, xrrs[i].height, xrrs[i].mwidth, xrrs[i].mheight);
+// 
+//                 rates = XRRRates(display_, 0, i, &num_rates);
+//                 
+//                 for(int j = 0; j < num_rates; j ++) {
+//                     
+//                     printf("%4i ", rates[j]); 
+//                     
+//                 } 
+//                 printf( "\n" );
+//             
+//             }
+            
+            //     GET CURRENT RESOLUTION AND FREQUENCY
+            //
+            //                     conf                   = XRRGetScreenInfo(dpy, root);
+            //                     original_rate          = XRRConfigCurrentRate(conf);
+            //                     original_size_id       = XRRConfigCurrentConfiguration(conf, &original_rotation);
+            
+            //                     printf("\n\tCURRENT SIZE ID  : %i\n", original_size_id);
+            //                     printf("\tCURRENT ROTATION : %i \n", original_rotation);
+            //                     printf("\tCURRENT RATE     : %i Hz\n\n", original_rate);   
+            
+        }
+        
         
         
         window_ = XCreateWindow( display_, root, 0, 0, cfg.width_, cfg.height_, 0, visinfo->depth, InputOutput, visinfo->visual, mask, &attr );
 
-        
+        XMapWindow( display_, window_ );
 
+        if( cfg.fullscreen_ ) {
+            
+        }
         
         have_xinput_ = true;
         
@@ -153,65 +453,95 @@ void gl_context::set_config(const gl_context::config& cfg) {
 //             XISetMask(mask.mask, XI_KeyPress);
 //             XISetMask(mask.mask, XI_KeyRelease);
             
+            
             XISelectEvents(display_, window_, &mask, 1);
+            
+            
+            
+            
+            
+            
+#if 0            
+            
+#endif
+            
+            if( cfg.fullscreen_ ) {
+                XGrabKeyboard( display_, DefaultRootWindow( display_ ), True, GrabModeAsync,
+                               GrabModeAsync, CurrentTime );
+                
+                XGrabPointer( display_, DefaultRootWindow( display_ ), True,
+                              ButtonPressMask |ButtonReleaseMask,
+                              GrabModeAsync, GrabModeAsync, None,  None, CurrentTime );
+                
+                
+                int mouse_device_id = -1;
+                
+                int ndevices;
+                XIDeviceInfo *devices, device;
+                
+                devices = XIQueryDevice(display_, XIAllDevices, &ndevices);
+                
+                for ( int i = 0; i < ndevices; i++) {
+                    device = devices[i];
+                    printf("Device %s (id: %d) is a ", device.name, device.deviceid);
+                    
+                    switch(device.use) {
+                        case XIMasterPointer: 
+                        {
+                            printf("master pointer\n"); 
+                            mouse_device_id = device.deviceid;
+                            
+                            
+                            break;
+                        }
+                        //                     case XIMasterKeyboard: printf("master keyboard\n"); break;
+                        //                     case XISlavePointer: printf("slave pointer\n"); break;
+                        //                     case XISlaveKeyboard: printf("slave keyboard\n"); break;
+                        //                     case XIFloatingSlave: printf("floating slave\n"); break;
+                    }
+                }
+                
+                //             printf("Device is attached to/paired with %d\n", device.attachement);
+                XIFreeDeviceInfo(devices);
+                
+                
+                if( mouse_device_id == -1 ) {
+                    __error( "mouse device not found\n" );   
+                }
+                
+                Cursor watch = XCreateFontCursor (display_, XC_watch);
+                XIGrabDevice(display_, mouse_device_id, window_, CurrentTime,
+                             watch , XIGrabModeAsync, XIGrabModeAsync,
+                             True, &mask);
+            } else {
+                XISelectEvents(display_, window_, &mask, 1);
+            }
             
             mask.deviceid = XIAllDevices;
             memset(mask.mask, 0, mask.mask_len);
             XISetMask(mask.mask, XI_RawMotion);
-            
             XISelectEvents(display_, DefaultRootWindow(display_), &mask, 1);
-            
-            free(mask.mask);
             XSelectInput( display_, window_, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask );    
-#if 0            
-            int mouse_device_id = -1;
-            
-            int ndevices;
-            XIDeviceInfo *devices, device;
-            
-            devices = XIQueryDevice(display_, XIAllDevices, &ndevices);
-            
-            for ( int i = 0; i < ndevices; i++) {
-                device = devices[i];
-                printf("Device %s (id: %d) is a ", device.name, device.deviceid);
-                
-                switch(device.use) {
-                case XIMasterPointer: 
-                {
-                    printf("master pointer\n"); 
-                    mouse_device_id = device.deviceid;
-                    
-                    
-                    break;
-                }
-//                     case XIMasterKeyboard: printf("master keyboard\n"); break;
-//                     case XISlavePointer: printf("slave pointer\n"); break;
-//                     case XISlaveKeyboard: printf("slave keyboard\n"); break;
-//                     case XIFloatingSlave: printf("floating slave\n"); break;
-                }
-            }
-
-//             printf("Device is attached to/paired with %d\n", device.attachement);
-            XIFreeDeviceInfo(devices);
-            
-            
-            if( mouse_device_id == -1 ) {
-                __error( "mouse device not found\n" );   
-            }
-#endif
-            
-//             Cursor watch = XCreateFontCursor (display_, XC_watch);
-//             XIGrabDevice(display_, mouse_device_id, window_, CurrentTime,
-//                          watch , XIGrabModeAsync, XIGrabModeAsync,
-//                          True, &eventmask);
+            free(mask.mask);
         } else {
+            
+            if( cfg.fullscreen_ ) {
+                
+                XGrabKeyboard( display_, DefaultRootWindow( display_ ), True, GrabModeAsync,
+                               GrabModeAsync, CurrentTime );
+                
+                XGrabPointer( display_, DefaultRootWindow( display_ ), True,
+                              ButtonPressMask |ButtonReleaseMask | PointerMotionMask,
+                              GrabModeAsync, GrabModeAsync, None,  None, CurrentTime );   
+            }
+            
             XSelectInput( display_, window_, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask );
             
         }
         
         
         
-        XMapWindow( display_, window_ );
+       
         
     }
     
@@ -222,10 +552,18 @@ void gl_context::set_config(const gl_context::config& cfg) {
      
       
     XFree( visinfo );
-      
+
+    
+    if( cfg.fullscreen_ ) {
+        mouse_grabbed_ = true;
+        xi_warp_.need_warp_ = true;
+    }
     
     cfg_ = cfg;
+   
     initialized_ = true;
+    
+    
 }
 
 
@@ -403,7 +741,7 @@ void gl_context::swap_buffers() {
     glXSwapBuffers( display_, window_ );
 }
 void gl_context::release_resources() {
-
+    mode_setter_.reset();
 }
 
 
@@ -600,7 +938,7 @@ abs_end:
 }
 
 void gl_context::grab_mouse(bool grab) {
-    if( grab == mouse_grabbed_ ) {
+    if( cfg_.fullscreen_ || grab == mouse_grabbed_ ) {
         return;
     }
 
@@ -611,6 +949,7 @@ void gl_context::grab_mouse(bool grab) {
     }
     
 }
+gl_context::~gl_context() {}
 
 
 }
