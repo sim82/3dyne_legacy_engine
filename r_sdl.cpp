@@ -1,7 +1,9 @@
 #include <thread>
 
-#define GL_GLEXT_PROTOTYPES 1
+#include <GL/glew.h>
 #if D3DYNE_OS_WIN
+
+
 #include <SDL.h>
 #else
 #include <SDL/SDL.h>
@@ -100,6 +102,25 @@ void input_thread_func() {
 static std::thread input_thread;
 
 void I_SDLStartUp();
+
+void TestOpenGL20() {
+	GLenum err = glewInit();
+	if ( err!=GLEW_OK )	{
+		//Problem: glewInit failed, something is seriously wrong.
+		__error("glewInit failed, aborting.");
+	}
+
+	GLuint index_buffer_obj = 0;
+	glGenBuffers(1, &index_buffer_obj);
+	printf("index_buffer_obj: %d\n", index_buffer_obj);
+
+	GLuint vertex_buffer_obj = 0;
+	glGenBuffers(1, &vertex_buffer_obj);
+	printf("vertex_buffer_obj: %d\n", vertex_buffer_obj);
+
+//	__error("xx");
+}
+
 void R_StartUp()
 {
 	TFUNC_ENTER;
@@ -139,6 +160,7 @@ void R_StartUp()
 	r_glinfo->texenv_units = 1;
 	r_glinfo->texenv_have_add = 1;
 
+	TestOpenGL20();
 
 	glBegin ( GL_POLYGON );
 

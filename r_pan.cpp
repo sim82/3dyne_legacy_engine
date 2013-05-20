@@ -27,13 +27,14 @@ gl_info_t       *r_glinfo = NULL;
 
 #define USE_INPUT_THREAD (0)
 
-
+#if 0
 static pan::gl_context s_gl_context;
+static mp::queue *s_queue = 0;
 
-void R_StartUp()
+void R_StartUp( mp::queue &q )
 {
 	TFUNC_ENTER;
-
+    s_queue = &q;
 	
 
 	r_devicewidth = SHP_GetVar ( "r_devicewidth" );
@@ -167,10 +168,7 @@ void R_Hint ( int hint )
 
 void I_Update()
 {
-    s_gl_context.dispatch_input( g_global_mp::get_instance()->get_queue());
-    
-    
-
+    s_gl_context.dispatch_input( *s_queue );
 }
 
 
@@ -185,5 +183,5 @@ unsigned char I_GetChar()
 {
 	return  'q';
 }
-
+#endif
 

@@ -39,6 +39,11 @@
 #include "db_lightmap.h"
 #include "g_message_passing.h"
 
+static mp::queue *s_queue;
+
+void ALIAS_SetQueue(mp::queue &q ) {
+    s_queue = &q;
+}
 
 /*
   ====================
@@ -152,6 +157,7 @@ void ALIAS_Echo()
 
 void ALIAS_R_Grab()
 {
+#if 0 // removing singleton shit...
 	int	flag;
 
 	flag = atoi( shargs[1] );
@@ -160,6 +166,7 @@ void ALIAS_R_Grab()
 		R_Hint( R_HINT_GRAB_MOUSE );
 	else
 		R_Hint( R_HINT_UNGRAB_MOUSE );
+#endif
 }
 
 void SHM_SetCurPage( const char *name );
@@ -239,7 +246,7 @@ void ALIAS_Quit()
 {
 	// async gc_state update
 	gc_state->u_quit = true;
-    g_global_mp::get_instance()->get_queue().emplace<msg::gc_quit>();
+    s_queue->emplace<msg::gc_quit>();
 }
 
 void ALIAS_Dlevel_Start()
@@ -291,20 +298,20 @@ void ALIAS_StartRemoteGame()
 
 void ALIAS_StartSingle()
 {
-    g_global_mp::get_instance()->get_queue().emplace<msg::gc_start_single>();
+    s_queue->emplace<msg::gc_start_single>();
     
 	gc_state->u_start_single = true;
 }
 
 void ALIAS_StartDemo()
 {
-    g_global_mp::get_instance()->get_queue().emplace<msg::gc_start_demo>();
+    s_queue->emplace<msg::gc_start_demo>();
 	gc_state->u_start_demo = true;
 }
 
 void ALIAS_DropGame()
 {
-    g_global_mp::get_instance()->get_queue().emplace<msg::gc_drop_game>();
+    s_queue->emplace<msg::gc_drop_game>();
 	// fixme: u_drop_game cause a sig11
 	gc_state->u_start_demo = true;
 }

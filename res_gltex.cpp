@@ -1005,6 +1005,7 @@ void Res_CacheGLTEX( g_resource_t *r )
 
 	texobj = CreateTexObject( res_register->resobj );
 
+#if 0
 	if ( strstr( res_register->path, ".tga" ) )
 	{		
 		r->res_cache = Res_CacheInGLTEX_tga( (res_gltex_register_t *)r->res_register );
@@ -1021,9 +1022,47 @@ void Res_CacheGLTEX( g_resource_t *r )
 	{
 		__error( "can't recognize image file format of '%s'\n", res_register->path );
 	}
+    ((res_gltex_cache_t *)(r->res_cache))->texobj = texobj;
+    r->state = G_RESOURCE_STATE_CACHED;
+#else
+    {
+        int width = 64;
+        int height = 64;
+        auto gltex = NEWTYPE( res_gltex_cache_t );
+        r->res_cache = gltex;
 
-	((res_gltex_cache_t *)(r->res_cache))->texobj = texobj;
-	r->state = G_RESOURCE_STATE_CACHED;
+        ((res_gltex_cache_t *)(r->res_cache))->texobj = texobj;
+        ((res_gltex_cache_t *)(r->res_cache))->width = 64;
+        ((res_gltex_cache_t *)(r->res_cache))->height = 64;
+        ((res_gltex_cache_t *)(r->res_cache))->comp = resGltexComponents_rgb;
+
+        std::vector<unsigned char> tmp(width * height * 4);
+
+
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        int mipmap = 0;
+        while( width >= 1 && height >= 1 ) {
+            std::generate( tmp.begin(), tmp.end(), []() {return rand() % 256;});
+//            std::fill( tmp.begin(), tmp.end(), rand() % 256);
+            if( mipmap >= 3 ) {
+                glTexImage2D( GL_TEXTURE_2D, mipmap, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, tmp.data() );
+            }
+            GLenum err;
+            if ( ( err = glGetError() ) != GL_NO_ERROR ) {
+                __error( "glTexImage2D failed: %d\n", err );
+            }
+            width /= 2;
+            height /= 2;
+            ++mipmap;
+        }
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 3 );
+        //glTexImage2D( GL_TEXTURE_2D, 1, GL_RGBA, width/2, height/2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tmp.data() );
+        r->state = G_RESOURCE_STATE_CACHED;
+
+    }
+#endif
+
 	GC_GiveBackTime();
 		
 }

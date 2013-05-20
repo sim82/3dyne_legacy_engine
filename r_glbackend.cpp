@@ -177,7 +177,6 @@ void R_BE_SetVertexMatrix( matrix3_t *mat )
 */
 void R_BE_SetVertexOrigin( vec3d_t origin )
 {    
-//	Vec3dCopy( be_origin, origin );
 	Vec3dScale( be_origin, FIX_UNITS, origin );
 }
 
@@ -192,9 +191,6 @@ void R_BE_SetVertexOrigin( vec3d_t origin )
 void R_BE_LockVertexArray( void )
 {
 	be_va_locked = true;
-
-//	glVertexPointer( 4, GL_FLOAT, 0, be_va );
-//	glEnableClientState( GL_VERTEX_ARRAY );
 }
 
 
@@ -207,7 +203,6 @@ void R_BE_LockVertexArray( void )
 void R_BE_UnlockVertexArray( void )
 {
 	be_va_locked = false;
-//	glDisableClientState( GL_VERTEX_ARRAY );
 }
 
 /*
@@ -293,75 +288,8 @@ void R_BE_ProcessCMDBuffer( void )
 	vec4d_t		*va;      
 
 	static int	glflush_hack = 0;
-#if 0
-	if ( be_va_locked == false )
-	{
-		__warning( "vertex array not locked\n" );
-		return;
-	}
-		
-	if ( !be_cmds )
-	{
-		__warning( "null command buffer\n" );
-		return;
-	}
-
-	if ( be_cmdnum == 0 )
-	{
-		__warning( "empty command buffer\n" );
-		return;
-	}
-
-	if ( !be_vrefs )
-	{
-		__warning( "null vertex reference buffer\n" );
-		return;
-	}
-
-	if ( be_vrefnum == 0 )
-	{
-		__warning( "empty vertex reference buffer\n" );
-		return;
-	}
-
-	if ( be_colors && ( be_colornum != be_vrefnum ) )
-	{
-		__warning( "colornum != vrefnum\n" );
-		return;
-	}
-
-	if ( be_texcoords && ( be_texcoordnum != be_vrefnum ) )
-	{
-		__warning( "texcoordnum != vrefnum\n" );
-		return;
-	}
-
-//	if ( be_vertexnum > 0 )
-	{
-		glVertexPointer( 4, GL_FLOAT, 0, be_va );
-//		glEnableClientState( GL_VERTEX_ARRAY );
-	}
-//	else
-//	{
-//		return;
-//	}
-
-	if ( be_colors )
-	{
-		glColorPointer( 3, GL_FLOAT, 0, be_colors );
-//		glEnableClientState( GL_COLOR_ARRAY );
-	}
-
-	if ( be_texcoords )
-	{
-		glTexCoordPointer( 2, GL_FLOAT, 0, be_texcoords );
-//		glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-	}
-#endif
-
 
 	va = &be_va[be_vofs];
-
 
 	i = 0;
 	ptr = be_cmds;
@@ -373,8 +301,6 @@ void R_BE_ProcessCMDBuffer( void )
 
 		cmd = *ptr++;
 		
-
-#if 1
 		if ( cmd != BE_CMD_END )
 		{
 			num = *ptr++;	
@@ -404,7 +330,6 @@ void R_BE_ProcessCMDBuffer( void )
 				if ( be_texcoords )
 					glTexCoord2fv( be_texcoords[i] );
 				glVertex4fv( va[be_vrefs[i]] );				
-//				glArrayElement( i+be_vofs );
 			}
 			glEnd();			
 
@@ -423,24 +348,5 @@ void R_BE_ProcessCMDBuffer( void )
 		{
 			break;
 		}
-
-#else
-
-#endif
-
 	}
-
-#if 0
-	if ( glflush_hack >= r_glinfo->flushinterval )
-	{
-		glFlush();
-		glflush_hack = 0;
-	}
-	else
-		glflush_hack++;
-#endif
-
-//	glDisableClientState( GL_VERTEX_ARRAY );
-//	glDisableClientState( GL_COLOR_ARRAY );
-//	glDisableClientState( GL_TEXTURE_COORD_ARRAY );
 }

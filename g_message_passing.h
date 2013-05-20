@@ -65,30 +65,33 @@ class world_frame : public base {};
 class client_frame : public base {};
 class swap_buffer : public base {};
 class print_queue_profiling : public base {};
+
+class menu_setpage : public base {};
+
 }
 
-class g_global_mp {
-public:
+//class g_global_mp {
+//public:
     
-    g_global_mp() : queue_( "main" ), bg_queue_( "bg" ) {}
+//    g_global_mp() : queue_( "main" ), bg_queue_( "bg" ) {}
     
-    mp::queue &get_queue() {
-        return queue_;   
-    }
+//    mp::queue &get_queue() {
+//        return queue_;
+//    }
     
-    mp::queue &get_bg_queue() {
-        return bg_queue_;   
-    }
-    
-    
-    static g_global_mp *get_instance();
-    
-    std::mutex gl_mtx_;
-private:
-    mp::queue queue_;
-    mp::queue bg_queue_;
+//    mp::queue &get_bg_queue() {
+//        return bg_queue_;
+//    }
     
     
-};
+//    static g_global_mp *get_instance();
+    
+//    std::mutex gl_mtx_;
+//private:
+//    mp::queue queue_;
+//    mp::queue bg_queue_;
+    
+    
+//};
 
 #endif

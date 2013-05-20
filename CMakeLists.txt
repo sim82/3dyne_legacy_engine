@@ -200,7 +200,6 @@ set( R_FAKE_SRC r_fake/g_blockmap.cpp
 	r_fake/r_shapes.cpp
 	r_fake/r_light.cpp
 	r_fake/r_light_sw.cpp
-	r_fake/r_light_gl.cpp
 	r_fake/r_lightmap.cpp
 	r_fake/r_shpctrljobs.cpp
 	r_fake/J_AmbientColor.cpp
@@ -247,5 +246,6 @@ if(WIN32)
   add_executable( colrm_dh colrm_dh.cpp )
   target_link_libraries( dd jpeg bz2 ws2_32 opengl32  SDL winmm )
 else()
-  target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xrandr Xext Xi pthread jpeg SDL bz2 GL )
+
+  target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xrandr Xext Xi pthread jpeg SDL bz2 GL GLEW )
 endif()

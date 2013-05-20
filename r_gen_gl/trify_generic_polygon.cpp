@@ -108,16 +108,6 @@ void Trify_GenTri( int p1, int p2, int p3 )
 
 //	printf( "Trify_GenTri: %d-%d-%d\n", p1, p2, p3 );
 
-#if 0
-	glBegin( GL_TRIANGLES );
-	glColor3f( 1,0,0 );
-	glVertex3fv( t_pts[p1] );
-	glVertex3fv( t_pts[p2] );
-	glVertex3fv( t_pts[p3] );	
-	glEnd();
-	glFlush();
-#endif
-
 	t_trinum++;
 }
 

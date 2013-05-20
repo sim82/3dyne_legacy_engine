@@ -1235,13 +1235,63 @@ public:
 namespace gs {
 
 
+void eval( const parse::node & n, environment *env, interpreter *interp ) {
+    if( !n.is_terminal() ) {
+        if( n.get_prod() == "expr_list") {
+            std::for_each( n.get_list().begin(), n.get_list().end(), [&](const parse::node &n2) {
+                eval( n2, env, interp );
+            });
+        } else if( n.get_prod() == "assignment" ) {
+            auto it = n.get_list().begin();
+
+            parse::lex_token term_name = it->get_terminal();
+            assert( isa<lex::name>(term_name));
+            const std::string &name = (static_cast<lex::name *>(term_name.get()))->get();
+
+            ++it;
+            ++it;
+            assert( isa<lex:constant>(*it));
+            parse::lex_token term_const = it->get_terminal();
+            auto lex_const = static_cast<lex::constant *>(term_const.get());
+            //const std::string &value = lex_const->get();
+
+            variant &var = env->get(name);
+            switch( lex_const->get_type() ) {
+            case lex::constant::const_type::integer:
+                var.set( lex_const->get(), variant::vt_int );
+                break;
+            case lex::constant::const_type::string:
+                var.set( lex_const->get(), variant::vt_string );
+                break;
+            case lex::constant::const_type::floating:
+                var.set( lex_const->get(), variant::vt_double );
+                break;
+            default:
+                std::cerr << "unhandled const type\n";
+            }
+            env->print();
+        } else if( n.get_prod() == "command") {
+            auto it = n.get_list().begin();
+            parse::lex_token term_name = it->get_terminal();
+            assert( isa<lex::name>(term_name));
+
+            const std::string &name = (static_cast<lex::name *>(term_name.get()))->get();
+            interp->dispatch( name );
+
+        }
+    }
+}
+
 
 interpreter::interpreter( mp::queue & q )
     : target_queue_(q)
 {
     sender_map_.emplace( "startsingle", []( mp::queue & target ) {
         target.emplace<msg::gc_start_single>();
-    } );
+    });
+    sender_map_.emplace( "menu_setpage", []( mp::queue &target ) {
+        target.emplace<msg::menu_setpage>();
+    });
 }
 
 void interpreter::exec(const char *buf_start)
@@ -1268,17 +1318,17 @@ void interpreter::exec(const char *buf_start)
     parse::node n = p.match_gs_expression_list( &tb );
     parse::print_node(n);
 
+    eval( n, &env_, this );
+
 }
 
 variant &interpreter::env_get(const char *name ) {
-    auto it = environment_map_.find( name );
-    if( it != environment_map_.end() ) {
-
-    }
+    return env_.get( name );
 }
 
-void interpreter::dispatch( const char *name )
+void interpreter::dispatch(const std::string &name )
 {
+    std::cout << "dispatch: " << name << "\n";
     auto it = sender_map_.find( name );
 
     if( it != sender_map_.end() ) {
@@ -1301,6 +1351,25 @@ gs::variant::operator const std::string &() const {
 
 gs::variant::operator std::string() {
     return *this;
+}
+
+variant &environment::get(const std::string &name)
+{
+    auto it = global_map_.find( name );
+    if( it != global_map_.end() ) {
+        return it->second;
+    } else {
+        auto res = global_map_.emplace( name, variant() );
+        return res.first->second;
+    }
+}
+
+void environment::print() const
+{
+    std::cout << "environment:\n";
+    for( auto p : global_map_ ) {
+        std::cout << p.first << " = " << p.second.get() << "\n";
+    }
 }
 
 

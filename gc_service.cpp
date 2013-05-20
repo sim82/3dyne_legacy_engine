@@ -63,7 +63,8 @@
 #include "g_library.h"
 #include "snd_deamon.h"
 #include "sh_input.h"
-  
+#include "pan.h"
+
 #if D3DYNE_OS_UNIXLIKE
 #include <stdio.h>                                                              
 #include <sys/types.h>                                                          
@@ -157,19 +158,19 @@ static WSADATA winsockdata;
 FILE	*h_sendudp = NULL;
 FILE	*h_recvudp = NULL;
 
-void bg_thread_func() {
+//void bg_thread_func() {
  
-    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
+//    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
     
     
   
     
-    while( !bg_q.is_stopped() ) {
-        bg_q.dispatch_pop();   
+//    while( !bg_q.is_stopped() ) {
+//        bg_q.dispatch_pop();
         
-    }
+//    }
     
-}
+//}
 
 
 void GC_StartRemoteGame( void );
@@ -1253,7 +1254,7 @@ extern unsigned int	watch1, watch2;
 void SHM_SetCurPage( const char *);
 void SHM_GetCurpage( char * );
 void GC_AccumulateViewAngles();
-void GC_MainLoop()
+void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 {
     int	inactive;
 
@@ -1332,17 +1333,13 @@ void GC_MainLoop()
     
 
     
-    
-    mp::queue &q = g_global_mp::get_instance()->get_queue();
-    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
-    
-    gs::interpreter ip( q );
-    const char *script = "a=1;b=\"xxx\";c=1.2;bla();";
+
+    const char *script = "menu_page=\"newgame\";menu_setpage();";
     ip.exec( script );
-    Exit();
+//    Exit();
 
     q.open_logfile( "/tmp/q_log" );
-    std::thread bg_thread( bg_thread_func );
+   // std::thread bg_thread( bg_thread_func );
 #if 0
     {
         auto h = [](std::unique_ptr<msg::res_return<g_res::tag::gltex>> m ) {
@@ -1385,6 +1382,12 @@ void GC_MainLoop()
 #define ASYNC_MAINLOOP 1
     
 #if ASYNC_MAINLOOP
+    q.add_handler<msg::menu_setpage> ( [&]( msg::ptr<msg::menu_setpage> m ) {
+        gs::variant &var = ip.env_get("menu_page");
+        auto name = var.get();
+        SHM_SetCurPage( name.c_str() );
+    });
+
     q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
         if ( h_sendudp )
         {
@@ -1402,8 +1405,7 @@ void GC_MainLoop()
     
     
     q.add_handler<msg::gc_start_demo>( [&] (msg::ptr<msg::gc_start_demo> m ) {
-        g_global_mp* gmp = g_global_mp::get_instance();
-        std::lock_guard<std::mutex> lock( gmp->gl_mtx_ );
+
         DD_LOG << "lock2\n";
         GC_CleanUp( gc_state );
         GC_InitDemo( gc_state );
@@ -1545,14 +1547,8 @@ void GC_MainLoop()
         
         md_x = md_y = 0;
         
-        g_global_mp* gmp = g_global_mp::get_instance();
-        
-        
-        {
-            std::lock_guard<std::mutex> lock( gmp->gl_mtx_ );
-            GC_RunClientFrame();
-        }
-        
+        GC_RunClientFrame();
+
         int ms2 = SYS_GetMsec();
         ms_rfdelta = ms2-ms_rfbegin;
         
@@ -1566,9 +1562,11 @@ void GC_MainLoop()
     
     
     q.add_handler<msg::swap_buffer>( [&] (std::unique_ptr<msg::swap_buffer> m ) {
-        R_SwapBuffer();    
+     //   R_SwapBuffer();
         //usleep(1000000);
-        I_Update();
+        //I_Update();
+        gl_ctx.swap_buffers();
+        gl_ctx.dispatch_input( q );
         q.emplace<msg::client_frame>();
     });
 #endif
@@ -1595,10 +1593,10 @@ void GC_MainLoop()
     }
 
     
-    bg_q.stop();
-    bg_thread.join();
+ //   bg_q.stop();
+  //  bg_thread.join();
     
-    Exit();
+    return;
 #endif    
     
 #if !ASYNC_MAINLOOP
@@ -2547,6 +2545,7 @@ static int gc_lastgiveback = 0;
 
 void GC_GiveBackTime()
 {
+#if 0
 	unsigned int	now;
 	char	name[256];
 		
@@ -2600,4 +2599,5 @@ void GC_GiveBackTime()
 	gc_renderframe++;
 
 	TFUNC_LEAVE;
+#endif
 }

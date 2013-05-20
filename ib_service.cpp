@@ -455,6 +455,11 @@ service& service::get_singleton()
     return *g_service;
 }
 
+void service::set_singleton(service *s)
+{
+    g_service = s;
+}
+
 service::~service() {
     std::for_each( sources_.begin(), sources_.end(), deleter<ibase::source>() );
 }
@@ -518,14 +523,14 @@ void IB_StartUp() {
         __error( "g_service != 0\n" );
     }
     
-    g_service = new ibase::service();
+  //  g_service = new ibase::service();
 }
 
 
 void IB_ShutDown()
 {
     if( g_service != 0 ) {
-        delete g_service;
+   //     delete g_service;
         g_service = 0;
     }
 }

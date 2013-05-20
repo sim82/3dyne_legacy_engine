@@ -35,6 +35,12 @@
 #ifndef __SHALIAS_H_INCLUDED
 #define __SHALIAS_H_INCLUDED
 
+namespace mp {
+class queue;
+}
+
+void ALIAS_SetQueue( mp::queue &q );
+
 void ALIAS_AddSource();
 void ALIAS_SetVar();
 void ALIAS_ShowVar();

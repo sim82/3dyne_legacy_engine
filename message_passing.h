@@ -391,17 +391,23 @@ public:
     typedef std::chrono::high_resolution_clock clock_type;
     
     
-    timer_source() {
+    timer_source() : do_stop_(false) {
         thread_ = std::thread( [this]() {
             thread_function();
         });
         
     }
-    
+    ~timer_source() {
+        std::unique_lock<std::mutex> lock(mtx_);
+        do_stop_ = true;
+        lock.unlock();
+        cond_.notify_all();
+        thread_.join();
+    }
     
     void thread_function() {
         std::unique_lock<std::mutex> lock( mtx_ );
-        while( true ) {
+        while( !do_stop_ ) {
             
             clock_type::time_point next = next_timeout();
             
@@ -474,7 +480,7 @@ public:
     }
     
 private:
-    
+    bool do_stop_;
     std::mutex mtx_;
     std::condition_variable cond_;
     

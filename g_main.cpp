@@ -46,6 +46,11 @@
 
 #include "version.h"
 #include "log.h"
+#include "message_passing.h"
+#include "pan.h"
+#include "game_shell.h"
+#include "sh_alias.h"
+#include "r_private.h"
 
 #if DD_USE_DLT
 #include "dlt.h"
@@ -105,7 +110,7 @@ void ShockHandler()
 
 	fprintf( stderr, "\n" );
 
-	R_ShutDown();
+//	R_ShutDown();
 	ShutDownBasic();
 
 	fprintf( stderr, "ShockHandler: the following segmentation fault is caused by Mesa!\n" );
@@ -396,10 +401,12 @@ int ibntest()
 #endif
 
 
+
+
 void Exit( void )
 {
 	__named_message( " bye ...\n" );
-	R_ShutDown();
+//	R_ShutDown();
 
 	SaveConfig();
 	ShutDownBasic();
@@ -456,6 +463,17 @@ int g_main( int argc, char* argv[] )
 
 	strcpy( padir, SYS_GetPADir() );
 //	IB_AddSource( text, SOURCE_DISK );
+
+    ibase::service ib_service;
+    ibase::service::set_singleton( &ib_service );
+
+    mp::queue q("main");
+
+    ALIAS_SetQueue( q );
+    gs::interpreter ip( q );
+
+
+
 
 	SHP_SetVar( "game", "dd1", SH_SV_RDONLY );
 
@@ -605,10 +623,27 @@ int g_main( int argc, char* argv[] )
 
 
 	
-	R_StartUp();
+//    R_StartUp( q );
 
 
+    pan::gl_context gl_ctx;
+    {
+        r_devicewidth = SHP_GetVar ( "r_devicewidth" );
+        r_deviceheight = SHP_GetVar ( "r_deviceheight" );
+        auto r_fullscreen = SHP_GetVar ( "r_fullscreen" );
 
+        pan::gl_context::config cfg;
+
+        cfg.width_ = r_devicewidth->ivalue;
+        cfg.height_ = r_deviceheight->ivalue;
+
+        gl_ctx.set_config(cfg);
+
+        r_glinfo = ( gl_info_t * ) MM_Malloc ( sizeof ( gl_info_t ) );
+        r_glinfo->arb_multitexture = 1;
+        r_glinfo->texenv_units = 1;
+        r_glinfo->texenv_have_add = 1;
+    }
 	signal( SIGSEGV, (void(*) (int)) SecureShutDown );
 	signal( SIGABRT, (void(*) (int)) SecureShutDown );
 	signal( SIGTERM, (void(*) (int)) SecureShutDown );
@@ -623,7 +658,7 @@ int g_main( int argc, char* argv[] )
 	HUD_StartUp();
 	GC_LoadGraphCursor();
 
-	R_Init();
+    //R_Init();
 
 
 //	__chkptr( tga );
@@ -676,8 +711,8 @@ int g_main( int argc, char* argv[] )
 
     DD_LOG << "test log\n";
 //    __error("");
-	GC_MainLoop();  // no return
-
+    GC_MainLoop( q, ip, gl_ctx );
+    SaveConfig();
 	TFUNC_LEAVE;
     return 0;
 }

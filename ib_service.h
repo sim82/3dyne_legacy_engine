@@ -92,7 +92,8 @@ public:
     const char *last_name_cstr() ;
 
     static service& get_singleton() ;
-    
+    static void set_singleton( ibase::service *s );
+
     ~service() ;
     
 private:

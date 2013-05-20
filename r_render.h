@@ -53,7 +53,11 @@
 
   ==================================================
 */
-void R_StartUp( void );
+namespace mp {
+class queue;
+}
+
+void R_StartUp( mp::queue &queue );
 void R_ShutDown( void );
 
 void R_SwapBuffer( void );

@@ -860,16 +860,16 @@ manager::manager()
 {
     push_scope();
     
-    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
-    bg_q.add_handler_ret<msg::res_get<tag::gltex> >( [this] (std::unique_ptr<msg::res_get<tag::gltex> > m ) {
+//    mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
+//    bg_q.add_handler_ret<msg::res_get<tag::gltex> >( [this] (std::unique_ptr<msg::res_get<tag::gltex> > m ) {
         
-        std::lock_guard<std::mutex> lock(g_global_mp::get_instance()->gl_mtx_);
+//        std::lock_guard<std::mutex> lock(g_global_mp::get_instance()->gl_mtx_);
         
-        res_impl<tag::gltex> *res = get<tag::gltex>( m->name_.c_str() );
+//        res_impl<tag::gltex> *res = get<tag::gltex>( m->name_.c_str() );
         
-        return mp::make_unique<msg::res_return<tag::gltex> >( res );
+//        return mp::make_unique<msg::res_return<tag::gltex> >( res );
         
-    } );
+//    } );
     
     
     

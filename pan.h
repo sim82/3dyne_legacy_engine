@@ -80,6 +80,7 @@ private:
     
     void dispatch_key( mp::queue &q, const XKeyEvent &event );
     
+
     Window  window_;
     Display *display_;
     int     scrnum_; 

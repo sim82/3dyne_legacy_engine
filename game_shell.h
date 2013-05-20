@@ -17,8 +17,13 @@ public:
 
     variant() : type_(vt_string) {}
 
-
-
+    void set( const std::string &v, type t ) {
+        std::string::operator=(v);
+        type_ = t;
+    }
+    const std::string &get() const {
+        return *this;
+    }
     using std::string::size;
 
     operator int() const ;
@@ -28,6 +33,16 @@ public:
 private:
     type type_;
 };
+class environment {
+
+public:
+    variant &get(const std::string &name);
+
+    void print() const;
+private:
+
+    std::unordered_map<std::string, variant> global_map_;
+};
 
 class interpreter {
 public:
@@ -36,8 +51,10 @@ public:
     void exec( const char *buf );
 
     variant &env_get(const char * name);
+
+    void dispatch(const std::string &name);
 private:
-    void dispatch(const char *name);
+
 
     mp::queue &target_queue_;
 
@@ -45,9 +62,9 @@ private:
 
     typedef std::function<void(mp::queue &)> message_sender_type;
     std::unordered_map<std::string, message_sender_type> sender_map_;
+    environment env_;
 
 
-    std::unordered_map<std::string, variant> environment_map_;
 };
 
 
