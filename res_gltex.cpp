@@ -1005,7 +1005,7 @@ void Res_CacheGLTEX( g_resource_t *r )
 
 	texobj = CreateTexObject( res_register->resobj );
 
-#if 0
+#if 1
 	if ( strstr( res_register->path, ".tga" ) )
 	{		
 		r->res_cache = Res_CacheInGLTEX_tga( (res_gltex_register_t *)r->res_register );
@@ -1023,6 +1023,7 @@ void Res_CacheGLTEX( g_resource_t *r )
 		__error( "can't recognize image file format of '%s'\n", res_register->path );
 	}
     ((res_gltex_cache_t *)(r->res_cache))->texobj = texobj;
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 3 );
     r->state = G_RESOURCE_STATE_CACHED;
 #else
     {
