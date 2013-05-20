@@ -72,7 +72,6 @@ res_tga_cache_t * Res_NewTGA( int width, int height, int bpp )
 
 res_tga_cache_t * Res_CacheInTGA( /*char *path*/ res_tga_register_t *reg )
 {
-	ib_file_t	*h;
 	int		filesize;
 //	char		*buf;
 

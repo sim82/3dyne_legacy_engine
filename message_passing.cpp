@@ -94,7 +94,7 @@ bool queue::dispatch_pop()
     
     // q_ can not be empty
     dispatch_pop_internal( lock );
-    
+    return true;
 }
 
 bool queue::dispatch_pop_noblock() {
@@ -125,14 +125,15 @@ bool queue::dispatch_pop_internal( std::unique_lock<std::mutex> &lock ) {
     clock_type::time_point tp_start;
     
     auto it = profiling_map_.end(); 
-    
-    
+
     // find profiling map entry now while 'ent' is still valid (move below!). prevents having to store it temporarily (and does not count profiling_map_ overhead)
     if( do_profiling ) {
         it = profiling_map_.find( ent.wrap_ );
         tp_start = clock_type::now();
     }
     
+
+    log_message( ent.wrap_, *ent.msg_ );
 
     if ( ent.return_token_ == TOKEN_NONE ) {
 
@@ -235,7 +236,21 @@ void queue::print_profiling(std::ostream& os) {
 }
 
 
+void queue::log_message( const typeinfo_wrapper &t, const msg::base & msg ) {
+    if( false && os_log_.good() ) {
+        auto ts = clock_type::now() - log_start_time_;
 
+        os_log_ << t.name() << "\n";
+        os_log_ << std::dec << std::chrono::duration_cast<std::chrono::microseconds>(ts).count() << "\n";
+        os_log_ << t.size() << "\n";
+        //os_log_.write( (char *) &msg, t.size() );
+        const unsigned char *msg_start = (unsigned char*)&msg;
+        const unsigned char *msg_end = msg_start + t.size();
+        std::for_each( msg_start, msg_end, [&](unsigned char v) { os_log_ << std::hex << uint(v) << " "; });
+
+        os_log_ << std::endl;
+    }
+}
 
 
 

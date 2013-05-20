@@ -51,7 +51,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#define APIENTRY
+//#define APIENTRY
 #define FOPEN_READ	"r"
 #define FOPEN_WRITE	"w"
 

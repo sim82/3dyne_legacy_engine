@@ -777,7 +777,7 @@ void bake_hobj( hobj_t *o ) {
         std::cout << "parent: " << o->parent << "\n";
         std::vector<char>::iterator it1 = xalloc.begin();
         
-        hobj *ow = copy_hobj( o, 0, xalloc );
+        copy_hobj( o, 0, xalloc );
         xalloc.build_const_initializers();
         if( false )
         {
@@ -823,7 +823,7 @@ void bake_hobj( hobj_t *o ) {
     getchar();
     {
         mapped_image xalloc2( "baked_nodyn.bin" );
-        char *it1 = xalloc2.begin();
+        xalloc2.begin();
         
         auto_destructor_list_type dest_list;
         xalloc2.call_const_initializers( dest_list );

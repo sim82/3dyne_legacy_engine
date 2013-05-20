@@ -388,8 +388,8 @@ void LA_DrawGltexByGltex( res_gltex_cache_t *gltex, int x, int y, int width, int
 
 void LA_DrawGltexByName( const char *resname, int x, int y, int width, int height, int mode )
 {
-	g_resource_t	*r;
-	res_gltex_cache_t	*gltex;
+    g_resource_t	*r;
+    res_gltex_cache_t	*gltex;
 	
 	TFUNC_ENTER;
 	

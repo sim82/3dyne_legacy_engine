@@ -476,10 +476,6 @@ res_gltex_cache_t * Res_CacheInGLTEX_tga( res_gltex_register_t *reg )
 
 	fliph = true;
 
-    g_global_mp* gmp = g_global_mp::get_instance();
-    
-        
-        
     
 	//
 	// mipmap hack
@@ -1093,7 +1089,6 @@ void gltex::cache ( res* r ) {
     
     
 
-    g_global_mp* gmp = g_global_mp::get_instance();
     {
         
         

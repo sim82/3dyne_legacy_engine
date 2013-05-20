@@ -46,9 +46,11 @@
 #include <atomic>
 #include <functional>
 #include <algorithm>
+#include <fstream>
 
 namespace msg {
- 
+template <typename T>
+using ptr = std::unique_ptr<T>;
     
     class base {
     public:
@@ -70,10 +72,12 @@ namespace mp {
 
 const static bool sender_handler_check = false;
     
-    
+
+
+
 class typeinfo_wrapper {
 public:
-    typeinfo_wrapper( const std::type_info &t ) : t_(t) {}
+    typeinfo_wrapper( const std::type_info &t, size_t size ) : t_(t), size_(size) {}
 
     inline bool operator==( const typeinfo_wrapper &other ) const {
         return t_ == other.t_;   
@@ -85,6 +89,10 @@ public:
 
     inline const char *name() const {
         return t_.name();
+    }
+
+    inline size_t size() const {
+        return size_;
     }
 
     struct hash
@@ -99,11 +107,15 @@ public:
 private:  
     
     const std::type_info &t_;
-    
+    size_t size_;
   
 };
 
+template<typename T>
+typeinfo_wrapper make_typeinfo_wrapper() {
+    return typeinfo_wrapper( typeid(T), sizeof(T) );
 
+}
 
     
 template<typename T, typename ...Args>
@@ -190,7 +202,7 @@ public:
         std::unique_lock<std::mutex> lock( central_mtx_ );
         
         
-        auto typeinfo = typeinfo_wrapper(typeid(T));
+        auto typeinfo = make_typeinfo_wrapper<T>();
         if( sender_handler_check ) {
             if( handler_map_.find(typeinfo) == handler_map_.end() ) {
                 std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
@@ -207,13 +219,13 @@ public:
 
    
    
-   void emplace_msg( typeinfo_wrapper && typeinfo, std::unique_ptr<msg::base> msg, size_t token, bool return_msg );
+    void emplace_msg( typeinfo_wrapper && typeinfo, std::unique_ptr<msg::base> msg, size_t token, bool return_msg );
    
     template<typename T, typename... Args>
-    size_t emplace_return( queue *ret_queue, Args...  args ) {
+    size_t emplace_raw( queue *ret_queue, Args...  args ) {
         std::unique_lock<std::mutex> lock( central_mtx_ );
         
-        auto typeinfo = typeinfo_wrapper(typeid(T));
+        auto typeinfo = make_typeinfo_wrapper<T>();
         if( sender_handler_check ) {
             if( handler_ret_map_.find(typeinfo) == handler_ret_map_.end() ) {
                 std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
@@ -223,7 +235,7 @@ public:
         
         size_t token = return_token_count_++;
         
-        return_map_.emplace( token, return_entry_type(ret_queue, typeinfo_wrapper(typeid(typename T::return_type))) );
+        return_map_.emplace( token, return_entry_type(ret_queue, make_typeinfo_wrapper<T>()) );
         q_.emplace_back( std::move(typeinfo), make_unique<T>(std::forward<Args>(args)...), token, false );
         
         
@@ -238,7 +250,7 @@ public:
     void emplace_return_deluxe( queue &ret_queue, std::function<void(std::unique_ptr<typename T::return_type>)> h, Args...  args ) {
         std::unique_lock<std::mutex> lock( central_mtx_ );
         
-        auto typeinfo = typeinfo_wrapper(typeid(T));
+        auto typeinfo{make_typeinfo_wrapper<T>()};
         if( sender_handler_check ) {
             if( handler_ret_map_.find(typeinfo) == handler_ret_map_.end() ) {
                 std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
@@ -248,7 +260,7 @@ public:
         
         size_t token = return_token_count_++;
         
-        return_map_.emplace( token, return_entry_type(&ret_queue, typeinfo_wrapper(typeid(typename T::return_type))) );
+        return_map_.emplace( token, return_entry_type(&ret_queue, make_typeinfo_wrapper<T>()) );
         q_.emplace_back( std::move(typeinfo), make_unique<T>(std::forward<Args>(args)...), token, false );
         
         
@@ -277,24 +289,27 @@ public:
     void add_handler_unsafe( handler_type h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
 
-        handler_map_.emplace( typeinfo_wrapper(typeid(T)), h );    
-        add_profiling_entry<T>();        
+        handler_map_.emplace( make_typeinfo_wrapper<T>(), h );
+        add_profiling_entry<T>();
+        add_typename_mapping<T>();
     }
     
     
     template<typename T>
     void add_handler( std::function<void(std::unique_ptr<T>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
-        handler_map_.emplace( typeinfo_wrapper(typeid(T)), msg_fwd<T>(h) );    
+        handler_map_.emplace( make_typeinfo_wrapper<T>(), msg_fwd<T>(h) );
         add_profiling_entry<T>();
+        add_typename_mapping<T>();
     }
-    
+
     
     template<typename T>
     void add_handler_ret( std::function<std::unique_ptr<typename T::return_type>(std::unique_ptr<T>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
-        handler_ret_map_.emplace( typeinfo_wrapper(typeid(T)), msg_ret_fwd<typename T::return_type, T>(h) );    
+        handler_ret_map_.emplace( make_typeinfo_wrapper<T>(), msg_ret_fwd<typename T::return_type, T>(h) );
         add_profiling_entry<T>();
+        add_typename_mapping<T>();
         
     }
     
@@ -317,15 +332,30 @@ public:
     const std::string &name() {
         return name_;   
     }
+
+    void open_logfile( const char *name ) {
+        log_start_time_ = clock_type::now();
+        os_log_.open( name, std::ios::binary );
+    }
+
 private:
     
     template<typename T>
     void add_profiling_entry() {
-        profiling_map_.emplace( typeinfo_wrapper(typeid(T)), msg_profiling() );
+        profiling_map_.emplace( make_typeinfo_wrapper<T>(), msg_profiling() );
         
     }
     
+    template<typename T>
+    void add_typename_mapping() {
+        typeinfo_wrapper t{make_typeinfo_wrapper<T>()};
+        typename_typeinfo_map_.emplace( t.name(), std::move(t) );
+    }
+
+
     bool dispatch_pop_internal(std::unique_lock< std::mutex >& lock);
+
+    void log_message( const typeinfo_wrapper &t, const msg::base & msg );
     
     mutable std::mutex central_mtx_;
     std::condition_variable q_cond_;
@@ -347,7 +377,12 @@ private:
     
     
     std::unordered_map<typeinfo_wrapper, msg_profiling,typeinfo_wrapper::hash> profiling_map_;
+
+    std::unordered_map<std::string,typeinfo_wrapper> typename_typeinfo_map_;
     
+    std::ofstream os_log_;
+    clock_type::time_point log_start_time_;
+
 };
 
 

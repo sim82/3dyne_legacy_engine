@@ -1,5 +1,5 @@
-#include "X11/extensions/XInput2.h"
-#include "X11/extensions/XInput.h"
+#include <X11/extensions/XInput2.h>
+#include <X11/extensions/XInput.h>
 #include <X11/extensions/Xrandr.h>
 #include <X11/cursorfont.h>
 #include <cstring>
@@ -16,8 +16,8 @@ gl_context::gl_context() : initialized_(false), ptr_last_valid_(false), mouse_gr
     
 gl_context::gl_context(const pan::gl_context::config& cfg)  
  : initialized_(false) 
- , ptr_last_valid_(false)
  , mouse_grabbed_(false)
+ , ptr_last_valid_(false)
 {
     set_config( cfg );
     
@@ -26,7 +26,6 @@ gl_context::gl_context(const pan::gl_context::config& cfg)
 
 static double mode_refresh (XRRModeInfo *mode_info)
 {
-    double rate;
     unsigned int vTotal = mode_info->vTotal;
 
     if (mode_info->modeFlags & RR_DoubleScan) {
@@ -79,7 +78,7 @@ public:
         
     }
     
-    xrandr_mode_setter( Display *display, Window root, int width, int height ) 
+    xrandr_mode_setter( Display *display, Window root, int width, int height )
     : initial_mode_( None )
     , display_(display), root_(root)
     {
@@ -102,7 +101,7 @@ public:
                     XRRModeInfo *mode_info = res->modes + j;
                     
                     std::cout << mode_info->width << " " << mode_info->height << " " << mode_refresh(mode_info) << ((mode == initial_mode_) ? "*" : "") << "\n";
-                    if( mode_info->width == width && mode_info->height == height && delta_compare( mode_refresh(mode_info), 60 )) {
+                    if( int(mode_info->width) == width && int(mode_info->height) == height && delta_compare( mode_refresh(mode_info), 60 )) {
                         std::cout << "xxx\n";
                         target_mode = mode;
                     }
@@ -120,7 +119,7 @@ public:
             XRRSetCrtcConfig( display, res, info->crtc, CurrentTime, crtc_info->x, crtc_info->y, target_mode, crtc_info->rotation, crtc_info->outputs, crtc_info->noutput );
     
             XRRFreeCrtcInfo(crtc_info);
-            XRRCrtcInfo *crtc_info = XRRGetCrtcInfo( display, res, info->crtc );
+           // XRRCrtcInfo *crtc_info = XRRGetCrtcInfo( display, res, info->crtc );
         } else {
             XRRFreeCrtcInfo(crtc_info);
             initial_mode_ = None;
@@ -328,7 +327,7 @@ void gl_context::set_config(const gl_context::config& cfg) {
         root = RootWindow( display_, scrnum_ );
         
         
-        mode_setter_.reset( new xrandr_mode_setter(display_, root, cfg.width_, cfg.height_) );
+//        mode_setter_.reset( new xrandr_mode_setter(display_, root, cfg.width_, cfg.height_) );
         
         XSetWindowAttributes attr;
         attr.background_pixel = 0;
@@ -531,7 +530,7 @@ void gl_context::set_config(const gl_context::config& cfg) {
                                GrabModeAsync, CurrentTime );
                 
                 XGrabPointer( display_, DefaultRootWindow( display_ ), True,
-                              ButtonPressMask |ButtonReleaseMask | PointerMotionMask,
+                              ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
                               GrabModeAsync, GrabModeAsync, None,  None, CurrentTime );   
             }
             

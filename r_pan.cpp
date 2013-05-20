@@ -42,7 +42,7 @@ void R_StartUp()
 
     pan::gl_context::config cfg;
     
-    cfg.fullscreen_ = true;
+//    cfg.fullscreen_ = true;
     
     
 //     if( cfg.fullscreen_ ) {

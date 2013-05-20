@@ -36,7 +36,7 @@
 #include <functional>
 #include <algorithm>
 #include "compiler_config.h"
-
+#include "game_shell.h"
 #include "g_message_passing.h"
 #include "shared/log.h"
 
@@ -99,7 +99,7 @@ int	gc_tps = 0;	// tris/sec
 int	gc_tpf = 0;	// tris/frame
 static int	gc_inmainloop = 0;
 
-static fp_t	gc_ftimes[8];
+//static fp_t	gc_ftimes[8];
 
 unsigned int	ms_win;
 unsigned int	ms_rfbegin = 0;
@@ -1255,10 +1255,8 @@ void SHM_GetCurpage( char * );
 void GC_AccumulateViewAngles();
 void GC_MainLoop()
 {
-	int	inactive, loops;
-	int	tps = 0;
-	int	i;
-	
+    int	inactive;
+
 	sh_var_t		*var_dumpudp;
 
 	TFUNC_ENTER;
@@ -1338,20 +1336,25 @@ void GC_MainLoop()
     mp::queue &q = g_global_mp::get_instance()->get_queue();
     mp::queue &bg_q = g_global_mp::get_instance()->get_bg_queue();
     
-    
+    gs::interpreter ip( q );
+    const char *script = "a=1;b=\"xxx\";c=1.2;bla();";
+    ip.exec( script );
+    Exit();
+
+    q.open_logfile( "/tmp/q_log" );
     std::thread bg_thread( bg_thread_func );
-    
+#if 0
     {
         auto h = [](std::unique_ptr<msg::res_return<g_res::tag::gltex>> m ) {
             DD_LOG << "got async resource: " << m->res_->cached() << " " << m->res_->name() << "\n";;
         };
         q.emplace_return_deluxe<msg::res_get<g_res::tag::gltex>>( q, h, "gltex.metal.metal20_1" );
     }
-    
+#endif
     
     q.add_default_stop_handler();
     
-    q.add_handler<msg::key_event>( [] (std::unique_ptr<msg::key_event> m ) {
+    q.add_handler<msg::key_event>( [] ( msg::ptr<msg::key_event> m ) {
         std::cout << "key_event: " << m->event_.sym << "\n";
         
         bool used = false;
@@ -1370,7 +1373,7 @@ void GC_MainLoop()
     size_t oldest_mouse_event = size_t(-1);
     size_t newest_mouse_event = 0;
     
-    q.add_handler<msg::mouse_event>( [&] (std::unique_ptr<msg::mouse_event> m ) {
+    q.add_handler<msg::mouse_event>( [&] (msg::ptr<msg::mouse_event> m ) {
         md_x += m->md_x_;
         md_y += m->md_y_;
         
@@ -1382,7 +1385,7 @@ void GC_MainLoop()
 #define ASYNC_MAINLOOP 1
     
 #if ASYNC_MAINLOOP
-    q.add_handler<msg::gc_quit>( [&] (std::unique_ptr<msg::gc_quit> m ) {
+    q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
         if ( h_sendudp )
         {
             fclose( h_sendudp );
@@ -1398,7 +1401,7 @@ void GC_MainLoop()
     });
     
     
-    q.add_handler<msg::gc_start_demo>( [&] (std::unique_ptr<msg::gc_start_demo> m ) {
+    q.add_handler<msg::gc_start_demo>( [&] (msg::ptr<msg::gc_start_demo> m ) {
         g_global_mp* gmp = g_global_mp::get_instance();
         std::lock_guard<std::mutex> lock( gmp->gl_mtx_ );
         DD_LOG << "lock2\n";
@@ -1408,7 +1411,7 @@ void GC_MainLoop()
         DD_LOG << "unlock2\n";
     } );
     
-    q.add_handler<msg::gc_start_single>( [&] (std::unique_ptr<msg::gc_start_single> m ) {
+    q.add_handler<msg::gc_start_single>( [&] (msg::ptr<msg::gc_start_single> m ) {
         res_scope.reset();
         res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
         gc_state->u_start_single = false;
@@ -1417,7 +1420,7 @@ void GC_MainLoop()
         GC_InitGame( gc_state );
     } );
     
-    q.add_handler<msg::gc_drop_game>( [&] (std::unique_ptr<msg::gc_drop_game> m ) {
+    q.add_handler<msg::gc_drop_game>( [&] (msg::ptr<msg::gc_drop_game> m ) {
         gc_state->u_drop_game = false;
         GC_CleanUp( gc_state );
         
@@ -1429,7 +1432,7 @@ void GC_MainLoop()
     
     ms_wfbegin = SYS_GetMsec();
     
-    q.add_handler<msg::world_frame>( [&] (std::unique_ptr<msg::world_frame> m ) {
+    q.add_handler<msg::world_frame>( [&] (msg::ptr<msg::world_frame> m ) {
         int now = SYS_GetMsec();
         gc_state->time = now;
 //         DD_LOG << "world frame\n";
@@ -1462,7 +1465,8 @@ void GC_MainLoop()
     
     std::deque<std::chrono::high_resolution_clock::duration> duration_avg;
     
-    q.add_handler<msg::client_frame>( [&] (std::unique_ptr<msg::client_frame> m ) {
+    q.add_handler<msg::client_frame>( [&] (msg::ptr<msg::client_frame> m ) {
+//    q.add_handler( [&] (msg::ptr<msg::client_frame> m ) {
         
         auto tp_now = std::chrono::high_resolution_clock::now();   
         if( false && last_rf != std::chrono::high_resolution_clock::time_point::max() ) {

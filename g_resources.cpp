@@ -39,7 +39,7 @@
 #include "defs.h"
 #include "g_shared.h"
 #include "message_passing.h"
-
+#include "g_message_passing.h"
 const void * GetKey_resource( const void *obj )
 {
 	g_resource_t	*r;
@@ -663,6 +663,31 @@ void G_ResourcesForEach( g_resources_t *res, void (*action_func)(g_resource_t *r
 	U_MapForEach( res->res_map, ResourcesForEachFunc );
 }
 
+
+namespace msg {
+    template<typename TAG>
+    class res_return : public msg::base {
+    public:
+        res_return( g_res::res_impl<TAG> *res ) : res_(res) {}
+
+        g_res::res_impl<TAG> *res_;
+    };
+
+
+    template<typename TAG>
+    class res_get : public msg::base {
+    public:
+        res_get( const char *name ) : name_(name) {
+
+        }
+
+
+        std::string name_;
+        typedef res_return<TAG> return_type;
+    };
+
+}
+
 namespace g_res
 {
 
@@ -828,6 +853,9 @@ size_t manager::pop_scope()
     return id;
 
 }
+
+
+
 manager::manager()
 {
     push_scope();

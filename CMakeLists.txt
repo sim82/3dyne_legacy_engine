@@ -174,6 +174,7 @@ set( ENGINE_SRC
 	g_message_passing.cpp
 	message_passing.cpp
 	pan.cpp
+        game_shell.cpp
 	)
 
 set( R_FAKE_SRC r_fake/g_blockmap.cpp

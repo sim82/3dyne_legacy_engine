@@ -57,7 +57,7 @@ extern int	gc_wftimebase;
 //extern int	gci_exit;
 extern int	gci_domuch;
 //extern int	gci_spawnmap;
-//extern int	gci_dropmap;
+//extern int	gci_dropmap;dont
 //extern int	gci_restartgl;
 
 //extern int	gci_startlocalgame;

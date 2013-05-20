@@ -41,12 +41,12 @@
 #include <map>
 #include <string>
 #include <vector>
-
+#include <mutex>
 #include <boost/intrusive/list.hpp>
 
 #include "g_resourcesdefs.h"
 #include "shock.h"
-#include "g_message_passing.h"
+//#include "g_message_passing.h"
 // class res_gltex_register_t;
 // struct res_sound_register_t;
 // struct res_lump_register_t;
@@ -302,29 +302,7 @@ private:
 
 }
 
-namespace msg {
-    template<typename TAG>
-    class res_return : public msg::base {
-    public:
-        res_return( g_res::res_impl<TAG> *res ) : res_(res) {}
-        
-        g_res::res_impl<TAG> *res_;
-    };
-    
-    
-    template<typename TAG>
-    class res_get : public msg::base {
-    public:
-        res_get( const char *name ) : name_(name) {            
-            
-        }
-        
-        
-        std::string name_;
-        typedef res_return<TAG> return_type;
-    };
-    
-}
+
 
 
 

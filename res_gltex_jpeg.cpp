@@ -193,7 +193,7 @@ METHODDEF( boolean )fill_input_buf( j_decompress_ptr cinfo )
 	// huge ansi-c pseudo polymorphism brainfuck: interpret cinfo->src as a pair, so that we can access the glued-on buffer end pointer
 	ptr_pair_type *ptr_pair = (ptr_pair_type*) cinfo->src;
 
-	int	num, i, c;
+    int	i, c;
 
 	__named_message( "\n" );
 	
