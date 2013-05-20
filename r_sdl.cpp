@@ -42,13 +42,15 @@ void TestOpenGL20() {
 		__error("glewInit failed, aborting.");
 	}
 
-	GLuint index_buffer_obj;
+	GLuint index_buffer_obj = 0;
 	glGenBuffers(1, &index_buffer_obj);
+	printf("index_buffer_obj: %d\n", index_buffer_obj);
 
-	GLuint vertex_buffer_obj;
+	GLuint vertex_buffer_obj = 0;
 	glGenBuffers(1, &vertex_buffer_obj);
+	printf("vertex_buffer_obj: %d\n", vertex_buffer_obj);
 
-
+//	__error("xx");
 }
 
 void R_StartUp()
