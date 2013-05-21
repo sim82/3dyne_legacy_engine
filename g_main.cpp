@@ -415,7 +415,7 @@ void Exit( void )
 }
 	
 
-
+void start_gltex_loader( mp::queue &q );
 int g_main( int argc, char* argv[] )
 {
 	ibfile_t*	handle;
@@ -470,6 +470,7 @@ int g_main( int argc, char* argv[] )
     mp::queue q("main");
 
     ALIAS_SetQueue( q );
+    start_gltex_loader( q );
     gs::interpreter ip( q );
 
 

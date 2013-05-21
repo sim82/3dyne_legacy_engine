@@ -15,7 +15,7 @@
 #include "GL/glext.h"
 
 sh_var_t *r_devicewidth, *r_deviceheight;
-static sh_var_t *r_fullscreen;
+
 
 
 keyevent_t              keventlist[128];

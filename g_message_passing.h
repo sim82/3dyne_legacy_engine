@@ -33,7 +33,7 @@
 
 #ifndef __g_message_passing_h
 #define __g_message_passing_h
-
+#include <GL/gl.h>
 #include "message_passing.h"
 #include "i_defs.h"
 
@@ -67,6 +67,25 @@ class swap_buffer : public base {};
 class print_queue_profiling : public base {};
 
 class menu_setpage : public base {};
+
+class gl_upload_texture : public base {
+public:
+    gl_upload_texture( GLuint t, GLuint w, GLuint h, GLint mip_level, std::vector<uint8_t> && data )
+        : t_(t),
+          w_(w),
+          h_(h),
+          mip_level_(mip_level),
+          data_(std::move(data))
+    {
+
+    }
+
+    GLuint t_;
+    GLuint w_;
+    GLuint h_;
+    GLint mip_level_;
+    std::vector<uint8_t> data_;
+};
 
 }
 

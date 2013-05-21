@@ -70,7 +70,7 @@ using ptr = std::unique_ptr<T>;
 
 namespace mp {
 
-const static bool sender_handler_check = false;
+const static bool sender_handler_check = true;
     
 
 

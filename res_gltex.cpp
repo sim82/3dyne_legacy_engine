@@ -34,7 +34,10 @@
 
 // res_gltex.c
 
-
+#include <thread>
+#include <condition_variable>
+#include <deque>
+#include <map>
 #include <iostream>
 #include "interfaces.h"
 #include "g_shared.h"
@@ -44,6 +47,8 @@
 #include "res_gltex.h"
 #include "res_gltexdefs.h"
 #include "shared/log.h"
+#include "g_message_passing.h"
+#include "message_passing.h"
 //#define HAVE_BOOLEAN
 
 
@@ -53,6 +58,84 @@
 #define GLTEX_GEN_MIPMAP	 1
 #define GLTEX_MIPMAP_HACK	 1
 
+
+class gltex_loader {
+
+public:
+    class job {
+    public:
+        typedef std::vector<uint8_t> data_type;
+
+        GLuint width_;
+        GLuint height_;
+        GLuint target_;
+        data_type data_;
+        size_t mipmap_level_;
+
+    };
+
+
+    gltex_loader( mp::queue &tq )
+        : tq_(tq),
+          do_stop_(false)
+    {
+        thread_ = std::thread( [&] {
+            this->run();
+        });
+    }
+    ~gltex_loader() {
+        do_stop_ = true;
+        thread_.join();
+    }
+
+    void run() {
+
+        while( !do_stop_ ) {
+            std::unique_lock<std::mutex> lock(mtx_);
+            while( q_.empty() && !do_stop_) {
+                cond_.wait(lock);
+            }
+
+            if( do_stop_ ) {
+                break;
+            }
+
+            //auto & j = q_.front();
+            auto it = q_.begin();
+            auto &j = it->second;
+
+            tq_.emplace<msg::gl_upload_texture>( j.target_, j.width_, j.height_, j.mipmap_level_, std::move( j.data_ ) );
+            //q_.pop_front();
+            q_.erase(it);
+
+            sleep_cond_.wait_for(lock, std::chrono::milliseconds(10));
+        }
+
+
+    }
+
+    void add( job && j ) {
+        std::unique_lock<std::mutex> lock(mtx_);
+        //q_.emplace_back( std::move(j) );
+        q_.emplace( j.mipmap_level_, std::move(j) );
+
+        lock.unlock();
+        cond_.notify_one();
+    }
+
+private:
+
+    mp::queue &tq_;
+    std::thread thread_;
+    std::condition_variable cond_;
+    std::condition_variable sleep_cond_;
+    std::mutex mtx_;
+    bool do_stop_;
+    //std::deque<job> q_;
+    std::multimap<int,job,std::greater<int>> q_;
+};
+
+static gltex_loader *s_loader = 0;
 
 typedef struct 
 {
@@ -153,8 +236,85 @@ static GLuint CreateTexObject( hobj_t *resobj )
 	return texobj;
 }
 
+
+//typedef std::vector<uint8_t> tex_data;
+
+static GLuint s_texobj = -1;
+
+void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, std::vector<gltex_loader::job> &out_jobs )
+{
+    int		size;
+    unsigned char	*half_buf;
+    int		x, y;
+
+
+    out_jobs.push_back( gltex_loader::job() );
+    gltex_loader::job & j = out_jobs.back();
+    j.target_ = s_texobj;
+    j.width_ = width;
+    j.height_ = height;
+    j.mipmap_level_ = mipmap;
+    j.data_.assign( color_buf, color_buf + (width * height *3));
+
+    //glTexImage2D( GL_TEXTURE_2D, mipmap, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, color_buf );
+
+    mipmap++;
+
+        assert( width > 0 && height > 0 );
+
+    if ( width == 1 || height == 1 )
+        return;
+
+    width /= 2;
+    height /= 2;
+
+    size = width * height * 3;
+    half_buf = (unsigned char *)alloca( size );
+
+    for ( x = 0; x < width; x++ )
+    {
+        for ( y = 0; y < height; y++ )
+        {
+            unsigned int	r, g, b;
+            int	x2, y2, xx, yy;
+            int		pb;
+
+            r=g=b=0;
+
+            for ( xx = 0; xx <= 1; xx++ )
+            {
+                for ( yy = 0; yy <= 1; yy++ )
+                {
+                    x2 = x*2 + xx;
+                    y2 = y*2 + yy;
+
+                    pb = (width*2*y2 + x2)*3;
+                    r+=color_buf[pb];
+                    g+=color_buf[pb+1];
+                    b+=color_buf[pb+2];
+                }
+            }
+
+            pb = (width*y + x)*3;
+            half_buf[pb] = r / 4;
+            half_buf[pb+1] = g / 4;
+            half_buf[pb+2] = b / 4;
+        }
+    }
+
+    rgb_mipmaps( mipmap, width, height, half_buf, out_jobs );
+}
+
 void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned char *color_buf )
 {
+    std::vector<gltex_loader::job> jobs;
+    rgb_mipmaps( 0, width, height, color_buf, jobs );
+
+    for( auto it = jobs.rbegin(); it != jobs.rend(); ++it ) {
+        s_loader->add(std::move(*it));
+    }
+#if 0
+
 	int		size;
 	unsigned char	*half_buf;
 	int		x, y;
@@ -206,6 +366,7 @@ void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned cha
 	}
 
 	Res_CreateGLTEX_rgb_mipmap( mipmap, width, height, half_buf );	
+#endif
 }
 
 
@@ -298,7 +459,10 @@ void Res_CreateGLTEX_565( int width, int height, unsigned char *color_buf )
 
 	if ( flag_mipmap_hint )
 	{
-		Res_CreateGLTEX_rgb_mipmap( 0, width, height, color_buf );	
+        Res_CreateGLTEX_rgb_mipmap( 0, width, height, color_buf );
+
+
+
 	}
 	else
 	{
@@ -1004,7 +1168,7 @@ void Res_CacheGLTEX( g_resource_t *r )
 	res_register = (res_gltex_register_t *) r->res_register;
 
 	texobj = CreateTexObject( res_register->resobj );
-
+    s_texobj = texobj;
 #if 1
 	if ( strstr( res_register->path, ".tga" ) )
 	{		
@@ -1025,6 +1189,7 @@ void Res_CacheGLTEX( g_resource_t *r )
     ((res_gltex_cache_t *)(r->res_cache))->texobj = texobj;
 //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 3 );
     r->state = G_RESOURCE_STATE_CACHED;
+    s_texobj = -1;
 #else
     {
         int width = 64;
@@ -1172,4 +1337,10 @@ void gltex::uncache ( res *r ) {
 
     
 } // namespace g_res
+
+
+void start_gltex_loader( mp::queue &q ) {
+    s_loader = new gltex_loader(q);
+}
+
 #endif

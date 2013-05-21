@@ -1245,13 +1245,14 @@ void eval( const parse::node & n, environment *env, interpreter *interp ) {
             auto it = n.get_list().begin();
 
             parse::lex_token term_name = it->get_terminal();
-            assert( isa<lex::name>(term_name));
+            assert( isa<lex::name>(term_name.get()));
             const std::string &name = (static_cast<lex::name *>(term_name.get()))->get();
 
             ++it;
             ++it;
-            assert( isa<lex:constant>(*it));
+
             parse::lex_token term_const = it->get_terminal();
+            assert( isa<lex::constant>(term_const.get()));
             auto lex_const = static_cast<lex::constant *>(term_const.get());
             //const std::string &value = lex_const->get();
 
@@ -1273,7 +1274,7 @@ void eval( const parse::node & n, environment *env, interpreter *interp ) {
         } else if( n.get_prod() == "command") {
             auto it = n.get_list().begin();
             parse::lex_token term_name = it->get_terminal();
-            assert( isa<lex::name>(term_name));
+            assert( isa<lex::name>(term_name.get()));
 
             const std::string &name = (static_cast<lex::name *>(term_name.get()))->get();
             interp->dispatch( name );

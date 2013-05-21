@@ -1379,6 +1379,19 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
         
     } );
     
+    q.add_handler<msg::gl_upload_texture>( []( msg::ptr<msg::gl_upload_texture> m ) {
+        glBindTexture( GL_TEXTURE_2D, m->t_ );
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->w_ << " " << m->h_ << "\n";
+        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_RGB, GL_UNSIGNED_BYTE, m->data_.data() );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m->mip_level_ );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->mip_level_ + 6 );
+    });
+
 #define ASYNC_MAINLOOP 1
     
 #if ASYNC_MAINLOOP
