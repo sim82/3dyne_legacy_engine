@@ -70,11 +70,12 @@ class menu_setpage : public base {};
 
 class gl_upload_texture : public base {
 public:
-    gl_upload_texture( GLuint t, GLuint w, GLuint h, GLint mip_level, std::vector<uint8_t> && data )
+    gl_upload_texture( GLuint t, GLuint w, GLuint h, GLint mip_level, GLint max_level_, std::vector<uint8_t> && data )
         : t_(t),
           w_(w),
           h_(h),
           mip_level_(mip_level),
+          max_level_(max_level_),
           data_(std::move(data))
     {
 
@@ -84,6 +85,7 @@ public:
     GLuint w_;
     GLuint h_;
     GLint mip_level_;
+    GLint max_level_;
     std::vector<uint8_t> data_;
 };
 

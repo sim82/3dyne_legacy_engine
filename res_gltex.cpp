@@ -71,6 +71,7 @@ public:
         GLuint target_;
         data_type data_;
         size_t mipmap_level_;
+        size_t max_level_;
 
     };
 
@@ -104,7 +105,7 @@ public:
             auto it = q_.begin();
             auto &j = it->second;
 
-            tq_.emplace<msg::gl_upload_texture>( j.target_, j.width_, j.height_, j.mipmap_level_, std::move( j.data_ ) );
+            tq_.emplace<msg::gl_upload_texture>( j.target_, j.width_, j.height_, j.mipmap_level_, j.max_level_, std::move( j.data_ ) );
             //q_.pop_front();
             q_.erase(it);
 
@@ -262,8 +263,12 @@ void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, s
 
         assert( width > 0 && height > 0 );
 
-    if ( width == 1 || height == 1 )
+    //if ( width == 2 || height == 2 )
+    //    return;
+
+    if( width * height < 64 ) {
         return;
+    }
 
     width /= 2;
     height /= 2;
@@ -307,13 +312,19 @@ void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, s
 
 void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned char *color_buf )
 {
+#if 1
     std::vector<gltex_loader::job> jobs;
     rgb_mipmaps( 0, width, height, color_buf, jobs );
 
-    for( auto it = jobs.rbegin(); it != jobs.rend(); ++it ) {
-        s_loader->add(std::move(*it));
+    if( !jobs.empty() ) {
+        size_t max_level = jobs.size() - 1;
+
+        for( auto it = jobs.rbegin(); it != jobs.rend(); ++it ) {
+            it->max_level_ = max_level;
+            s_loader->add(std::move(*it));
+        }
     }
-#if 0
+#else
 
 	int		size;
 	unsigned char	*half_buf;
