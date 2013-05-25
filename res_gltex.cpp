@@ -58,6 +58,45 @@
 #define GLTEX_GEN_MIPMAP	 1
 #define GLTEX_MIPMAP_HACK	 1
 
+#pragma pack(push)
+#pragma pack(1)
+
+
+
+struct dds_header {
+    typedef int32_t DWORD;
+    struct pixel_format // DDPIXELFORMAT
+    {
+        int32_t dwSize;
+        int32_t dwFlags;
+        int32_t dwFourCC;
+        int32_t dwRGBBitCount;
+        int32_t dwRBitMask, dwGBitMask, dwBBitMask;
+        int32_t dwRGBAlphaBitMask;
+    };
+
+//    struct caps2
+//    {
+//        int32_t dwCaps1;
+//        int32_t dwCaps2;
+//        int32_t Reserved[2];
+//    };
+      DWORD           dwSize;
+      DWORD           dwFlags;
+      DWORD           dwHeight;
+      DWORD           dwWidth;
+      DWORD           dwPitchOrLinearSize;
+      DWORD           dwDepth;
+      DWORD           dwMipMapCount;
+      DWORD           dwReserved1[11];
+      pixel_format ddspf;
+      DWORD           dwCaps;
+      DWORD           dwCaps2;
+      DWORD           dwCaps3;
+      DWORD           dwCaps4;
+      DWORD           dwReserved2;
+};
+#pragma pack(pop)
 
 class gltex_loader {
 
@@ -83,6 +122,10 @@ public:
         thread_ = std::thread( [&] {
             this->run();
         });
+
+
+
+
     }
     ~gltex_loader() {
         do_stop_ = true;
@@ -93,6 +136,8 @@ public:
 
         while( !do_stop_ ) {
             std::unique_lock<std::mutex> lock(mtx_);
+
+
             while( q_.empty() && !do_stop_) {
                 cond_.wait(lock);
             }
@@ -100,6 +145,14 @@ public:
             if( do_stop_ ) {
                 break;
             }
+
+
+            ibase::file_handle f( "test.dds" );
+
+            ibase::file_handle::mapping map(f);
+            dds_header *dds = (dds_header*) (map.ptr() + 4);
+            std::cout << "dds: " << dds->dwWidth << " " << dds->dwHeight << "\n";
+            assert( dds->dwSize == sizeof( dds_header ));
 
             //auto & j = q_.front();
             auto it = q_.begin();
