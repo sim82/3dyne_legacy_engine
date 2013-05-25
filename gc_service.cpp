@@ -1405,6 +1405,33 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 
     });
 
+
+//    q.add_handler<msg::gl_upload_texture>( []( msg::ptr<msg::test_tuple> m ) {
+//        glBindTexture( GL_TEXTURE_2D, m->t_ );
+
+
+
+//        std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->max_level_  << " "  << m->w_ << " " << m->h_ << "\n";
+//        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_RGB, GL_UNSIGNED_BYTE, m->data_.data() );
+//        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+////        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//        if( m->mip_level_ == 0 ) {
+//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
+//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+////            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+////            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+//        } else {
+//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+//        }
+
+////        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_LOD, m->mip_level_ );
+////        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, m->max_level_ );
+//        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m->mip_level_ );
+//        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->max_level_ );
+
+//    });
+
 #define ASYNC_MAINLOOP 1
     
 #if ASYNC_MAINLOOP

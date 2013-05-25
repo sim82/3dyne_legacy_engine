@@ -106,6 +106,7 @@ public:
             auto &j = it->second;
 
             tq_.emplace<msg::gl_upload_texture>( j.target_, j.width_, j.height_, j.mipmap_level_, j.max_level_, std::move( j.data_ ) );
+//            tq_.emplace<msg::test_tuple>( std::make_tuple( j.target_, j.width_, j.height_, j.mipmap_level_, j.max_level_, std::move( j.data_ )) );
             //q_.pop_front();
             q_.erase(it);
 

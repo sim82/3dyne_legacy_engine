@@ -36,6 +36,7 @@
 #include <GL/gl.h>
 #include "message_passing.h"
 #include "i_defs.h"
+#include <tuple>
 
 namespace msg {
 class key_event : public base {
@@ -70,12 +71,12 @@ class menu_setpage : public base {};
 
 class gl_upload_texture : public base {
 public:
-    gl_upload_texture( GLuint t, GLuint w, GLuint h, GLint mip_level, GLint max_level_, std::vector<uint8_t> && data )
+    gl_upload_texture( GLuint t, GLuint w, GLuint h, GLint mip_level, GLint max_level, std::vector<uint8_t> && data )
         : t_(t),
           w_(w),
           h_(h),
           mip_level_(mip_level),
-          max_level_(max_level_),
+          max_level_(max_level),
           data_(std::move(data))
     {
 
@@ -87,6 +88,16 @@ public:
     GLint mip_level_;
     GLint max_level_;
     std::vector<uint8_t> data_;
+};
+
+class test_tuple : public base {
+public:
+    typedef std::tuple<GLuint,GLuint,GLuint,GLint,GLint,std::vector<uint8_t>> data_type;
+
+    test_tuple( data_type && data )
+        : data_( std::move(data)) {}
+
+     data_type data_;
 };
 
 }
