@@ -247,8 +247,8 @@ public:
     void add( job && j ) {
         std::unique_lock<std::mutex> lock(mtx_);
         //q_.emplace_back( std::move(j) );
-        q_.emplace( j.mipmap_level_, std::move(j) );
-
+        //q_.emplace( j.mipmap_level_, std::move(j) );
+        q_.insert( std::make_pair(j.mipmap_level_, std::move(j)) );
         lock.unlock();
         cond_.notify_one();
     }

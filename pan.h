@@ -2,55 +2,23 @@
 #ifndef __pan_h
 #define __pan_h
 
+
+#include "compiler_config.h"
+#if !D3DYNE_OS_WIN
 #include <X11/Xlib.h>
-#include <GL/glx.h>
+#else
+struct SDL_Surface;
+#endif
+
 #include <memory>
 #include "message_passing.h"
 
-namespace pan {
 
-    
-// class x11_display {
-// public:
-//     
-//     x11_display( bool open = false ) 
-//     {
-//         if( open ) {
-//             display_ = XOpenDisplay(NULL);
-//         } else {
-//             display_ = 0;
-//         }
-//     }
-//     
-//     ~x11_display() {
-//         if( display_ != 0 ) {
-//             XCloseDisplay( display_ );
-//         }
-//         
-//         display_ = 0;
-//         
-//     }
-//     
-//     x11_display( const x11_display & ) = delete;
-//     x11_display &operator=(const x11_display &) = delete;
-//     
-//     x11_display( x11_display && other ) {
-//         display_ = other.display_;
-//         other.display_ = 0;
-//     }
-//     
-//     x11_display &operator=(x11_display && other) {
-//         display_ = other.display_;
-//         other.display_ = 0;
-//         
-//         return *this;
-//     }
-//     
-//     
-//     
-//     Display *display_;
-//     
-// };
+#include <GL/gl.h>
+#include <GL/glext.h>
+
+namespace pan {
+#if !D3DYNE_OS_WIN
 class xrandr_mode_setter;
 class gl_context {
 public:
@@ -122,6 +90,47 @@ private:
     
     
 };
+#else
 
 
+class gl_context {
+public:
+    struct config {
+
+        config() : width_(0), height_(0), fullscreen_(false) {}
+
+        size_t width_;
+        size_t height_;
+
+        bool fullscreen_;
+    };
+
+    gl_context();
+    gl_context( const config &cfg );
+    ~gl_context();
+
+    void set_config( const config &cfg );
+
+    void release_resources();
+
+    void dispatch_input( mp::queue &q );
+    void swap_buffers();
+
+    void grab_mouse( bool grab );
+private:
+
+    config  cfg_;
+
+    SDL_Surface *sdl_surf_display;
+
+    bool initialized_;
+    bool have_xinput_;
+
+    bool mouse_grabbed_;
+
+
+
+};
+#endif
+}
 #endif

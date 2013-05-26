@@ -53,6 +53,8 @@ endif()
 if(WIN32)
   if(MSVC)
     set( CMAKE_CXX_FLAGS "-D_SCL_SECURE_NO_WARNINGS /INCREMENTAL:YES /EHsc" )
+  else()
+    set( CMAKE_CXX_FLAGS "-Wall -std=c++11" )
   endif()
 
   include_directories( 3dyne_extlibs/jpeg-6b 3dyne_extlibs/bzip2-1.0.6 3dyne_extlibs/SDL-1.2.15/include )
@@ -70,7 +72,7 @@ if(WIN32)
   add_definitions( -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="win32.x86" )
 
   #set( SS_SRC r_wgl.cpp i_win32.cpp wgl_service.cpp i_vkmap.cpp )
-  set( SS_SRC r_sdl )
+  set( SS_SRC r_pan )
   file(GLOB ALL_HEADERS *.h shared/*.h r_fake/*.h )
 
 else()

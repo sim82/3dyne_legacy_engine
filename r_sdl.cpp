@@ -1,6 +1,6 @@
 #include <thread>
 
-#include <GL/glew.h>
+
 #if D3DYNE_OS_WIN
 
 

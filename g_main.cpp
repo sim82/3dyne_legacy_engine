@@ -51,6 +51,7 @@
 #include "game_shell.h"
 #include "sh_alias.h"
 #include "r_private.h"
+#include "message_passing.h"
 
 #if DD_USE_DLT
 #include "dlt.h"
@@ -142,7 +143,7 @@ LONG WINAPI win32Exception( struct _EXCEPTION_POINTERS *einfo )
 	}
 #endif
 
-	R_ShutDown();
+//	R_ShutDown();
 	ShutDownBasic();
 	
 	return EXCEPTION_CONTINUE_SEARCH;

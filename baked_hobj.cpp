@@ -1,3 +1,5 @@
+#include "compiler_config.h"
+#if !D3DYNE_OS_WIN
 
 #include <iostream>
 #include <fstream>
@@ -847,3 +849,4 @@ void bake_hobj( hobj_t *o ) {
 #endif
     }
 }
+#endif
