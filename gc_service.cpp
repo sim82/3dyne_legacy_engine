@@ -1384,8 +1384,8 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 
 
 
-        std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->max_level_  << " "  << m->w_ << " " << m->h_ << "\n";
-        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_RGB, GL_UNSIGNED_BYTE, m->data_.data() );
+        //std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->max_level_  << " "  << m->w_ << " " << m->h_ << "\n";
+        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_BGR, GL_UNSIGNED_BYTE, m->data_.data() );
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         if( m->mip_level_ == 0 ) {

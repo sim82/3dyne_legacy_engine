@@ -39,6 +39,7 @@
 #include <deque>
 #include <map>
 #include <iostream>
+#include <tuple>
 #include "interfaces.h"
 #include "g_shared.h"
 
@@ -98,22 +99,91 @@ struct dds_header {
 };
 #pragma pack(pop)
 
+class gltex_data_source {
+public:
+    virtual ~gltex_data_source() {}
+
+    virtual std::pair<size_t,size_t> mipmap_size( size_t level ) = 0;
+    virtual std::pair<const char *,const char *> mipmap_data( size_t level ) = 0;
+    virtual size_t max_level() = 0;
+};
+
+
+class gltex_data_source_dds_mmap : public gltex_data_source {
+
+
+public:
+    gltex_data_source_dds_mmap( const char *name )
+        : h_(name),
+          map_(h_),
+          header_((dds_header*)(map_.ptr() + sizeof(int32_t))),
+          data_(map_.ptr() + sizeof(int32_t) + sizeof( dds_header ))
+    {
+
+        std::cout << "dds: " << header_->dwWidth << " " << header_->dwHeight << "\n";
+        assert( header_->dwSize == sizeof(dds_header));
+    }
+
+    size_t max_level() {
+        return header_->dwMipMapCount - 1;
+    }
+
+    std::pair<size_t,size_t> mipmap_size( size_t level ) {
+        size_t w = header_->dwWidth;
+        size_t h = header_->dwHeight;
+
+        for( size_t i = 0; i < level; ++i ) {
+            w /= 2;
+            h /= 2;
+        }
+
+        return std::make_pair( w, h );
+    }
+
+    std::pair<const char *,const char *> mipmap_data( size_t level ) {
+        size_t w = header_->dwWidth;
+        size_t h = header_->dwHeight;
+
+        const char *ptr = data_;
+        const size_t pixel_width = (header_->ddspf.dwRGBBitCount / 8);
+        for( size_t i = 0; i < level; ++i ) {
+            ptr += (w * h * pixel_width);
+            w /= 2;
+            h /= 2;
+        }
+        return std::make_pair( ptr, ptr + w * h * (header_->ddspf.dwRGBBitCount / 8));
+    }
+
+
+private:
+    ibase::file_handle h_;
+    ibase::file_handle::mapping map_;
+    const dds_header *header_;
+    const char *data_;
+};
+
 class gltex_loader {
 
 public:
+//    class job {
+//    public:
+//        typedef std::vector<uint8_t> data_type;
+
+//        GLuint width_;
+//        GLuint height_;
+//        GLuint target_;
+//        data_type data_;
+//        size_t mipmap_level_;
+//        size_t max_level_;
+
+//    };
     class job {
     public:
-        typedef std::vector<uint8_t> data_type;
+        std::shared_ptr<gltex_data_source> src_;
 
-        GLuint width_;
-        GLuint height_;
         GLuint target_;
-        data_type data_;
         size_t mipmap_level_;
-        size_t max_level_;
-
     };
-
 
     gltex_loader( mp::queue &tq )
         : tq_(tq),
@@ -133,7 +203,10 @@ public:
     }
 
     void run() {
-
+        {
+            std::unique_lock<std::mutex> lock(mtx_);
+            sleep_cond_.wait_for(lock, std::chrono::seconds(3));
+        }
         while( !do_stop_ ) {
             std::unique_lock<std::mutex> lock(mtx_);
 
@@ -147,18 +220,20 @@ public:
             }
 
 
-            ibase::file_handle f( "test.dds" );
 
-            ibase::file_handle::mapping map(f);
-            dds_header *dds = (dds_header*) (map.ptr() + 4);
-            std::cout << "dds: " << dds->dwWidth << " " << dds->dwHeight << "\n";
-            assert( dds->dwSize == sizeof( dds_header ));
 
             //auto & j = q_.front();
             auto it = q_.begin();
             auto &j = it->second;
 
-            tq_.emplace<msg::gl_upload_texture>( j.target_, j.width_, j.height_, j.mipmap_level_, j.max_level_, std::move( j.data_ ) );
+            size_t w, h;
+            std::tie( w, h) = j.src_->mipmap_size( j.mipmap_level_ );
+            auto data = j.src_->mipmap_data( j.mipmap_level_ );
+            tq_.emplace<msg::gl_upload_texture>( j.target_, w, h, j.mipmap_level_, j.src_->max_level(), std::vector<uint8_t>(data.first, data.second) );
+            if( !false ) {
+                auto x = std::accumulate( data.first, data.second, 0, std::plus<const char>() );
+                std::cout << "x: " << int(x) << "\n";
+            }
 //            tq_.emplace<msg::test_tuple>( std::make_tuple( j.target_, j.width_, j.height_, j.mipmap_level_, j.max_level_, std::move( j.data_ )) );
             //q_.pop_front();
             q_.erase(it);
@@ -298,6 +373,7 @@ static GLuint s_texobj = -1;
 
 void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, std::vector<gltex_loader::job> &out_jobs )
 {
+#if 0
     int		size;
     unsigned char	*half_buf;
     int		x, y;
@@ -362,11 +438,13 @@ void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, s
     }
 
     rgb_mipmaps( mipmap, width, height, half_buf, out_jobs );
+#endif
 }
 
 void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned char *color_buf )
 {
 #if 1
+#if 0
     std::vector<gltex_loader::job> jobs;
     rgb_mipmaps( 0, width, height, color_buf, jobs );
 
@@ -378,6 +456,17 @@ void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned cha
             s_loader->add(std::move(*it));
         }
     }
+#else
+    std::shared_ptr<gltex_data_source> ds{ std::make_shared<gltex_data_source_dds_mmap>( "textures/wall/con1_1.dds" )};
+    size_t num_mipmap = ds->max_level() + 1;
+    for( size_t i = 0; i < num_mipmap; ++i ) {
+        gltex_loader::job j;
+        j.mipmap_level_ = i;
+        j.src_ = ds;
+        j.target_ = s_texobj;
+        s_loader->add( std::move(j) );
+    }
+#endif
 #else
 
 	int		size;
