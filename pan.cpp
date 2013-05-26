@@ -1,3 +1,6 @@
+#include "compiler_config.h"
+#if !D3DYNE_OS_WIN
+
 #include <X11/extensions/XInput2.h>
 #include <X11/extensions/XInput.h>
 #include <X11/extensions/Xrandr.h>
@@ -955,3 +958,314 @@ gl_context::~gl_context() {}
 
 
 
+#else
+
+#include <SDL.h>
+
+#include "pan.h"
+
+#define vgl_notextern
+
+
+
+#include "shared/log.h"
+
+#include "interfaces.h"
+#include "r_private.h"
+#include "r_interface.h"
+#include "g_message_passing.h"
+
+static int              isshift = 0;
+
+pan::gl_context::gl_context()
+{
+}
+
+
+pan::gl_context::gl_context(const pan::gl_context::config &cfg)
+{
+    set_config(cfg);
+}
+
+
+pan::gl_context::~gl_context()
+{
+}
+
+
+void pan::gl_context::set_config(const pan::gl_context::config &cfg)
+{
+    Uint32 fs_flag = cfg.fullscreen_ ? SDL_FULLSCREEN : 0;
+
+    if ( ( sdl_surf_display = SDL_SetVideoMode ( cfg.width_, cfg.height_, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_OPENGL | fs_flag ) ) == NULL ) {
+        __error ( "SDL_SetVidMode failed\n" );;
+    }
+
+    cfg_ = cfg;
+}
+
+
+void pan::gl_context::release_resources()
+{
+}
+
+std::pair<gs_ksym, uint32_t> translate_key_event( SDL_Event event )
+{
+
+    unsigned int    gsksym = 0;
+
+    unsigned int type = event.key.type == SDL_KEYDOWN ? SYMTYPE_PRESS : SYMTYPE_RELEASE;
+
+    // do abstraction from X11 keysym to gsksym
+
+    switch ( event.key.keysym.sym ) {
+// ascii control codes 0x0 to 0x1F
+
+    case SDLK_BACKSPACE:
+        gsksym = '\b';
+        goto abs_end;
+
+    case SDLK_TAB:
+        gsksym = '\t';
+        goto abs_end;
+
+    case SDLK_RETURN:
+        gsksym = '\n';
+        goto abs_end;
+
+// cursor keys
+    case SDLK_UP:
+        //case SDLK_KP:
+        gsksym = GSK_CUP;
+        goto abs_end;
+
+    case SDLK_DOWN:
+        //case XK_KP_Down:
+        gsksym = GSK_CDOWN;
+        goto abs_end;
+
+    case SDLK_RIGHT:
+//         case XK_KP_Right:
+        gsksym = GSK_CRIGHT;
+        goto abs_end;
+
+    case SDLK_LEFT:
+//         case XK_KP_Left:
+        gsksym = GSK_CLEFT;
+        goto abs_end;
+
+
+// modifier keys
+    case SDLK_RSHIFT:
+    case SDLK_LSHIFT:
+        gsksym = GSK_SHIFT;
+        if ( !isshift ) {
+            isshift = 1;
+        } else {
+            isshift = 0;
+        }
+        SHV_Printf ( "isshift" );
+        goto abs_end;
+
+    case SDLK_RCTRL:
+    case SDLK_LCTRL:
+        gsksym = GSK_CTRL;
+        goto abs_end;
+
+    case SDLK_RALT:
+    case SDLK_LALT:
+//         case XK_Meta_L:
+//         case XK_Meta_R:
+        gsksym = GSK_ALT;
+        goto abs_end;
+
+
+    case SDLK_RSUPER:
+    case SDLK_LSUPER:
+        gsksym = GSK_FUCK0;
+        goto abs_end;
+
+//         case SDLK_RH:
+//         case XK_Hyper_R:
+//                 gsksym = GSK_FUCK1;
+//                 goto abs_end;
+//                 // other cursor conrol keys
+
+    case SDLK_INSERT:
+//         case XK_KP_Insert:
+        gsksym = GSK_INSERT;
+        goto abs_end;
+
+    case SDLK_HOME:
+//         case XK_KP_Home:
+        gsksym = GSK_HOME;
+        goto abs_end;
+
+    case SDLK_END:
+//         case XK_KP_End:
+        gsksym = GSK_END;
+        goto abs_end;
+
+    case SDLK_PAGEUP:
+//         case XK_KP_Page_Up:
+        gsksym = GSK_PGUP;
+        goto abs_end;
+
+    case SDLK_PAGEDOWN:
+//         case XK_KP_Page_Down:
+        gsksym = GSK_PGDN;
+        goto abs_end;
+
+    case SDLK_ESCAPE:
+        gsksym = GSK_ESCAPE;
+        goto abs_end;
+
+// function keys
+
+    case SDLK_F1:
+        gsksym = GSK_F1;
+        goto abs_end;
+
+
+    case SDLK_F2:
+        gsksym = GSK_F2;
+        goto abs_end;
+
+    case SDLK_F3:
+        gsksym = GSK_F3;
+        goto abs_end;
+
+    case SDLK_F4:
+        gsksym = GSK_F4;
+        goto abs_end;
+
+    case SDLK_F5:
+        gsksym = GSK_F5;
+        goto abs_end;
+
+    case SDLK_F6:
+        gsksym = GSK_F6;
+        goto abs_end;
+
+    case SDLK_F7:
+        gsksym = GSK_F7;
+        goto abs_end;
+
+    case SDLK_F8:
+        gsksym = GSK_F8;
+        goto abs_end;
+
+    case SDLK_F9:
+        gsksym = GSK_F9;
+        goto abs_end;
+
+    case SDLK_F10:
+        gsksym = GSK_F10;
+        goto abs_end;
+
+    case SDLK_F11:
+        gsksym = GSK_F11;
+        goto abs_end;
+
+    case SDLK_F12:
+        gsksym = GSK_F12;
+        goto abs_end;
+
+    default:
+
+        if ( ( event.key.keysym.sym >= 0x020 ) && ( event.key.keysym.sym <= 0x07f ) ) {
+            gsksym = event.key.keysym.sym;
+        }
+        goto abs_end;
+
+    }
+
+
+abs_end:
+//    if ( shiftmap[gsksym] && isshift ) {
+//        gsksym = shiftmap[gsksym];
+//    }
+
+    return std::make_pair( gs_ksym(gsksym), type );
+}
+
+std::pair<gs_ksym, uint32_t> translate_mouse_button_event ( SDL_Event event )
+{
+    unsigned int    gsksym = 0;
+    unsigned int    type = event.button.type == SDL_MOUSEBUTTONDOWN ? SYMTYPE_PRESS : SYMTYPE_RELEASE;
+
+
+    switch ( event.button.button ) {
+    case 1:
+        gsksym = GSK_BUTTON1;
+        break;
+
+    case 2:
+        gsksym = GSK_BUTTON2;
+        break;
+
+    case 3:
+        gsksym = GSK_BUTTON3;
+        break;
+
+    case 4:
+        gsksym = GSK_BUTTON4;
+        break;
+
+
+    case 5:
+        gsksym = GSK_BUTTON5;
+        break;
+
+    default:
+        __warning ( "noknown mousebutton pressed\n" );
+        break;
+    }
+
+    return std::make_pair(gs_ksym(gsksym),type);
+}
+void pan::gl_context::dispatch_input(mp::queue &q)
+{
+    SDL_Event event;
+    while ( SDL_PollEvent ( &event ) ) {
+        switch ( event.type ) {
+        case SDL_MOUSEMOTION:
+            q.emplace<msg::mouse_event>(event.motion.xrel, event.motion.yrel, SYS_GetMsec());
+            break;
+
+        case SDL_MOUSEBUTTONUP:
+        case SDL_MOUSEBUTTONDOWN:
+        {
+            auto p = translate_mouse_button_event(event);
+            q.emplace<msg::key_event>( keyevent_t(p.first, p.second) );
+
+
+            break;
+        }
+
+        case SDL_KEYDOWN:
+        case SDL_KEYUP:
+        {
+            auto p = translate_key_event(event);
+            q.emplace<msg::key_event>( keyevent_t(p.first, p.second) );
+            break;
+        }
+        default:
+            printf ( "sdl event: %d\n", event.type );
+        }
+    }
+}
+
+
+void pan::gl_context::swap_buffers()
+{
+    glFlush();
+    SDL_GL_SwapBuffers();
+}
+
+
+void pan::gl_context::grab_mouse(bool grab)
+{
+}
+
+#endif

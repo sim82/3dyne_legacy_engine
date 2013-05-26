@@ -39,6 +39,7 @@
 #include <deque>
 #include <map>
 #include <iostream>
+
 #include "interfaces.h"
 #include "g_shared.h"
 
@@ -146,12 +147,12 @@ public:
             }
 
 
-            ibase::file_handle f( "test.dds" );
+//            ibase::file_handle f( "test.dds" );
 
-            ibase::file_handle::mapping map(f);
-            dds_header *dds = (dds_header*) (map.ptr() + 4);
-            std::cout << "dds: " << dds->dwWidth << " " << dds->dwHeight << "\n";
-            assert( dds->dwSize == sizeof( dds_header ));
+//            ibase::file_handle::mapping map(f);
+//            dds_header *dds = (dds_header*) (map.ptr() + 4);
+//            std::cout << "dds: " << dds->dwWidth << " " << dds->dwHeight << "\n";
+//            assert( dds->dwSize == sizeof( dds_header ));
 
             //auto & j = q_.front();
             auto it = q_.begin();
@@ -170,8 +171,8 @@ public:
     void add( job && j ) {
         std::unique_lock<std::mutex> lock(mtx_);
         //q_.emplace_back( std::move(j) );
-        q_.emplace( j.mipmap_level_, std::move(j) );
-
+        //q_.emplace( j.mipmap_level_, std::move(j) );
+        q_.insert( std::make_pair(j.mipmap_level_, std::move(j)) );
         lock.unlock();
         cond_.notify_one();
     }

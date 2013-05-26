@@ -41,8 +41,8 @@ void finisher::operator= ( const std::basic_ostream< char >& omsg )
     const std::basic_stringstream<char> &msg = static_cast<const std::basic_stringstream<char> &>(omsg);
     
     const std::string &smsg = msg.str();
-    
-    bool have_newline = (smsg.size() > 0) && (smsg.back() == '\n');
+
+    bool have_newline = (smsg.size() > 0) && (*(smsg.rbegin()) == '\n');
     
     
     

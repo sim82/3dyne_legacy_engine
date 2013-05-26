@@ -92,10 +92,13 @@ typedef enum {
 } gs_ksym;
 
 
-typedef struct keyevent_s {
+struct keyevent_t {
+    keyevent_t() = default;
+    keyevent_t(gs_ksym xsym, unsigned int xtype ) : sym(xsym), type(xtype) {}
+
 	gs_ksym		sym;	// ksym of the event
 	unsigned int	type;   // event type: SYMTYPE_PRESS / SYMTYPE_RELEASE
-} keyevent_t; 	
+};
 
 
 #endif

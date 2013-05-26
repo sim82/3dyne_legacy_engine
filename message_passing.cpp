@@ -246,7 +246,7 @@ void queue::log_message( const typeinfo_wrapper &t, const msg::base & msg ) {
         //os_log_.write( (char *) &msg, t.size() );
         const unsigned char *msg_start = (unsigned char*)&msg;
         const unsigned char *msg_end = msg_start + t.size();
-        std::for_each( msg_start, msg_end, [&](unsigned char v) { os_log_ << std::hex << uint(v) << " "; });
+        std::for_each( msg_start, msg_end, [&](unsigned char v) { os_log_ << std::hex << size_t(v) << " "; });
 
         os_log_ << std::endl;
     }
