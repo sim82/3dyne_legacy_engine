@@ -4,9 +4,13 @@
 
 
 #include "compiler_config.h"
+#include <GL/gl.h>
+
 #if !D3DYNE_OS_WIN
 #include <X11/Xlib.h>
+#include <GL/glx.h>
 #else
+#include <GL/glext.h>
 struct SDL_Surface;
 #endif
 
@@ -14,8 +18,8 @@ struct SDL_Surface;
 #include "message_passing.h"
 
 
-#include <GL/gl.h>
-#include <GL/glext.h>
+
+
 
 namespace pan {
 #if !D3DYNE_OS_WIN
@@ -86,10 +90,7 @@ private:
     
     std::unique_ptr<xrandr_mode_setter> mode_setter_;
 };
-    
-    
-    
-};
+
 #else
 
 
