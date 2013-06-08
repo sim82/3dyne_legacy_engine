@@ -68,6 +68,13 @@ class swap_buffer : public base {};
 class print_queue_profiling : public base {};
 
 class menu_setpage : public base {};
+class game_shell_execute : public base {
+public:
+    game_shell_execute( const std::string &script ) : script_(script) {}
+    std::string script_;
+
+};
+
 
 class gl_upload_texture : public base {
 public:

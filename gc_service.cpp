@@ -77,6 +77,8 @@
 
 #endif 
 
+#include "gl_bits.h"
+#include "sh_alias.h"
 //#include <sys/time.h>                                                           
 
 #include <errno.h>
@@ -1254,7 +1256,10 @@ extern unsigned int	watch1, watch2;
 void SHM_SetCurPage( const char *);
 void SHM_GetCurpage( char * );
 void GC_AccumulateViewAngles();
-void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
+
+void start_gltex_loader( mp::queue &q );
+void stop_gltex_loader();
+void GC_MainLoop( pan::gl_context &gl_ctx )
 {
     int	inactive;
 
@@ -1332,11 +1337,13 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
     std::auto_ptr<g_res::manager::scope_guard> res_scope;
     
 
-    
+    mp::queue q("main");
 
-    const char *script = "menu_page=\"newgame\";menu_setpage();";
-    ip.exec( script );
-//    Exit();
+    ALIAS_SetQueue( q );
+    gltex_background_loader gltex_bgl( q );
+    gs::interpreter ip( q );
+
+
 
     q.open_logfile( "/tmp/q_log" );
    // std::thread bg_thread( bg_thread_func );
@@ -1350,7 +1357,7 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 #endif
     
     q.add_default_stop_handler();
-    
+
     q.add_handler<msg::key_event>( [] ( msg::ptr<msg::key_event> m ) {
         std::cout << "key_event: " << m->event_.sym << "\n";
         
@@ -1385,23 +1392,23 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 
 
         //std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->max_level_  << " "  << m->w_ << " " << m->h_ << "\n";
-        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_BGR, GL_UNSIGNED_BYTE, m->data_.data() );
+        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_BGR, GL_UNSIGNED_BYTE, m->data_.data() ); check_gl_error;
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         if( m->mip_level_ == 0 ) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR ); check_gl_error;
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ); check_gl_error;
 //            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 //            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
         } else {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); check_gl_error;
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); check_gl_error;
         }
 
 //        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_LOD, m->mip_level_ );
 //        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, m->max_level_ );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m->mip_level_ );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->max_level_ );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m->mip_level_ ); check_gl_error;
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->max_level_ ); check_gl_error;
 
     });
 
@@ -1435,10 +1442,15 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 #define ASYNC_MAINLOOP 1
     
 #if ASYNC_MAINLOOP
+
     q.add_handler<msg::menu_setpage> ( [&]( msg::ptr<msg::menu_setpage> m ) {
         gs::variant &var = ip.env_get("menu_page");
         auto name = var.get();
         SHM_SetCurPage( name.c_str() );
+    });
+
+    q.add_handler<msg::game_shell_execute> ( [&]( msg::ptr<msg::game_shell_execute> m ) {
+        ip.exec( m->script_.c_str() );
     });
 
     q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
@@ -1639,13 +1651,17 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
     timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
     timer.add_timer<msg::print_queue_profiling>( &q, std::chrono::seconds(5), true );
     
+    const char *script = "menu_page=\"newgame\";menu_setpage();";
+    q.emplace<msg::game_shell_execute>( script );
+    //ip.exec( script );
+//    Exit();
     
 #if ASYNC_MAINLOOP
     while( !q.is_stopped() ) {
         q.dispatch_pop();
     }
 
-    
+
  //   bg_q.stop();
   //  bg_thread.join();
     

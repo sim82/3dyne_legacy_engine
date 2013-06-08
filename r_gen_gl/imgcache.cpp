@@ -317,7 +317,7 @@ ic_image_t * IC_NewImage( int width, int height )
 
 
 	glTexImage2D( GL_TEXTURE_2D, 0, IC_INTERNAL_FORMAT, width, height, 0, IC_MEMORY_FORMAT, GL_UNSIGNED_BYTE, tmpimg );
-	if ( glGetError() != GL_NO_ERROR )
+    if ( glGetError() != GL_NO_ERROR )
 	{
 		__error( "glTexImage2D failed\n" );
 	}

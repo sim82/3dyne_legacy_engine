@@ -416,7 +416,7 @@ void Exit( void )
 }
 	
 
-void start_gltex_loader( mp::queue &q );
+
 int g_main( int argc, char* argv[] )
 {
 	ibfile_t*	handle;
@@ -468,11 +468,7 @@ int g_main( int argc, char* argv[] )
     ibase::service ib_service;
     ibase::service::set_singleton( &ib_service );
 
-    mp::queue q("main");
 
-    ALIAS_SetQueue( q );
-    start_gltex_loader( q );
-    gs::interpreter ip( q );
 
 
 
@@ -713,7 +709,7 @@ int g_main( int argc, char* argv[] )
 
     DD_LOG << "test log\n";
 //    __error("");
-    GC_MainLoop( q, ip, gl_ctx );
+    GC_MainLoop( gl_ctx );
     SaveConfig();
 	TFUNC_LEAVE;
     return 0;

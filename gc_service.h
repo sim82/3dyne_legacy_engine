@@ -83,7 +83,7 @@ namespace pan {
 class gl_context;
 }
 
-void GC_MainLoop(mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx);
+void GC_MainLoop(pan::gl_context &gl_ctx);
 void GC_CheckInit();
 void GC_ClearInitFlags();
 

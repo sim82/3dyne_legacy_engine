@@ -38,7 +38,7 @@
 #define __res_gltex
 #include "g_resources.h"
 #include "g_resourcesdefs.h"
-
+#include "message_passing.h"
 g_resource_t * Res_RegisterGLTEX( hobj_t *resobj );
 void Res_UnregisterGLTEX( g_resource_t *r );
 void Res_CacheGLTEX( g_resource_t *r );
@@ -63,5 +63,13 @@ public:
 
 
 } // namespace g_res
+class gltex_loader_impl;
+class gltex_background_loader {
+public:
+    gltex_background_loader( mp::queue &q );
+    ~gltex_background_loader();
+private:
+    std::unique_ptr<gltex_loader_impl> impl_;
+};
 
 #endif

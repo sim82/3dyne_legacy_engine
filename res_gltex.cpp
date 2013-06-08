@@ -162,7 +162,7 @@ private:
     const char *data_;
 };
 
-class gltex_loader {
+class gltex_loader_impl {
 
 public:
 //    class job {
@@ -185,7 +185,7 @@ public:
         size_t mipmap_level_;
     };
 
-    gltex_loader( mp::queue &tq )
+    gltex_loader_impl( mp::queue &tq )
         : tq_(tq),
           do_stop_(false)
     {
@@ -197,9 +197,10 @@ public:
 
 
     }
-    ~gltex_loader() {
-        do_stop_ = true;
-        thread_.join();
+    ~gltex_loader_impl() {
+        if( thread_.joinable() ) {
+            stop_and_join();
+        }
     }
 
     void run() {
@@ -253,6 +254,18 @@ public:
         cond_.notify_one();
     }
 
+    void stop_and_join() {
+        DD_LOG << "joining gltex_loader...\n";
+
+        std::unique_lock<std::mutex> lock(mtx_);
+        do_stop_ = true;
+
+
+        lock.unlock();
+        cond_.notify_all();
+        thread_.join();
+    }
+
 private:
 
     mp::queue &tq_;
@@ -265,7 +278,7 @@ private:
     std::multimap<int,job,std::greater<int>> q_;
 };
 
-static gltex_loader *s_loader = 0;
+static gltex_loader_impl *s_loader = 0;
 
 typedef struct 
 {
@@ -371,7 +384,7 @@ static GLuint CreateTexObject( hobj_t *resobj )
 
 static GLuint s_texobj = -1;
 
-void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, std::vector<gltex_loader::job> &out_jobs )
+void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, std::vector<gltex_loader_impl::job> &out_jobs )
 {
 #if 0
     int		size;
@@ -460,7 +473,7 @@ void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned cha
     std::shared_ptr<gltex_data_source> ds{ std::make_shared<gltex_data_source_dds_mmap>( "textures/wall/con1_1.dds" )};
     size_t num_mipmap = ds->max_level() + 1;
     for( size_t i = 0; i < num_mipmap; ++i ) {
-        gltex_loader::job j;
+        gltex_loader_impl::job j;
         j.mipmap_level_ = i;
         j.src_ = ds;
         j.target_ = s_texobj;
@@ -1492,9 +1505,33 @@ void gltex::uncache ( res *r ) {
     
 } // namespace g_res
 
-
+#if 0
 void start_gltex_loader( mp::queue &q ) {
-    s_loader = new gltex_loader(q);
+    s_loader = new gltex_loader_impl(q);
+}
+
+void stop_gltex_loader() {
+    if( s_loader ) {
+        // destructor automatically does a stop+join
+        delete s_loader;
+    }
+
+
+    s_loader = nullptr;
+}
+#endif
+
+gltex_background_loader::gltex_background_loader(mp::queue &q)
+    : impl_( mp::make_unique<gltex_loader_impl>(q) )
+{
+    // HACK: make the loader kind of a singleton internally
+    assert( s_loader == nullptr );
+    s_loader = impl_.get();
+}
+
+gltex_background_loader::~gltex_background_loader()
+{
+    s_loader = nullptr;
 }
 
 #endif

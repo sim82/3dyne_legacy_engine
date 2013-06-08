@@ -97,7 +97,6 @@ private:
 class gl_context {
 public:
     struct config {
-
         config() : width_(0), height_(0), fullscreen_(false) {}
 
         size_t width_;
