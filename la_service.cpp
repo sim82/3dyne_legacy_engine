@@ -395,9 +395,9 @@ void LA_DrawGltexByName( const char *resname, int x, int y, int width, int heigh
 	
 	r = G_ResourceSearch( g_rs, resname );
 
-    gltex = g_res::manager::get_instance().get<g_res::tag::gltex>( resname )->cs_;
+    //gltex = g_res::manager::get_instance().get<g_res::tag::gltex>( resname )->cs_;
     
-	//gltex = (res_gltex_cache_t *) r->res_cache;
+    gltex = (res_gltex_cache_t *) r->res_cache;
 
 	R_Draw2dSetTexture( gltex->texobj );
 	R_Draw2dSetDrawMode( mode );

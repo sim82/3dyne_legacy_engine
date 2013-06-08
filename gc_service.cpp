@@ -1251,148 +1251,341 @@ void GC_NetHandleLocalPort( gc_state_t *gc )
 
   ==============================
 */
+
 extern unsigned int	watch1, watch2;
 // SIM: FIXME: where are the sh menu prototypes?
 void SHM_SetCurPage( const char *);
 void SHM_GetCurpage( char * );
 void GC_AccumulateViewAngles();
 
-void start_gltex_loader( mp::queue &q );
-void stop_gltex_loader();
-void GC_MainLoop( pan::gl_context &gl_ctx )
-{
-    int	inactive;
-
-	sh_var_t		*var_dumpudp;
-
-	TFUNC_ENTER;
-	// this is the third and by now best and most flexible attemp
-
-	watch1 = watch2 = 1234;
-
-	//
-	// init gc_state
-	// 
-	gc_state = NEWTYPE( gc_state_t );
-	gc_state->state = gcState_none;
-	gc_state->udp_state = gcUdpState_none;
-
-	gc_state->id_first = 0x70000000;
-	gc_state->id_last  = 0x7fffffff;
-	gc_state->id_next = gc_state->id_first;
-
-	// init event queues
-	ByteIter_Init( &gc_state->bi_server, gc_state->buf_server, 0 );
-	ByteIter_Init( &gc_state->bi_client, gc_state->buf_client, 0 );
-	ByteIter_Init( &gc_state->bi_render, gc_state->buf_render, 0 );
-	
-	// init gc_state shvars
-	SHP_SetVar( "gc_servermode", "local", 0 );
-	SHP_SetVar( "gc_id_bind_input", "0", 0 );
-	SHP_SetVar( "gc_id_bind_view", "0", 0 );
-	SHP_SetVar( "gc_id_player", "0", 0 );
-
-	// init ids
-	gc_state->id_bind_input = 123456; //UNIQUE_INVALIDE;
-	gc_state->id_bind_view = UNIQUE_INVALIDE;
-
-	rendershot = SHP_GetVar( "rendershot" );
-
-	gc_mousescale = SHP_GetVar( "gc_mousescale" );
-	gc_invmouse = SHP_GetVar( "gc_invmouse" );
-	
-	gc_showfps = SHP_GetVar( "gc_showfps" );
-
-	var_dumpudp = SHP_GetVar( "gc_dumpudp" );
-
-	if ( var_dumpudp->ivalue > 0 )
-	{
-		char	str[256];
-		sprintf( str, "udpsend%d.dump", var_dumpudp->ivalue );
-		h_sendudp = fopen( str, "w" );
-		sprintf( str, "udprecv%d.dump", var_dumpudp->ivalue );
-		h_recvudp = fopen( str, "w" );
-	}
-	else
-	{
-		h_sendudp = NULL;
-		h_recvudp = NULL;
-	}
-	
-	ms_wfbegin = SYS_GetMsec();
-	ms_rfbegin = SYS_GetMsec();
-	ms_rfdelta = 0;
-
-	gc_tps = 0;
-	gc_inmainloop = 1;
-
-	//
-	// start demo
-	// 
-
-	gc_state->u_start_demo = true;
-
-	SHM_SetCurPage( "main" );
-
-    std::auto_ptr<g_res::manager::scope_guard> res_scope;
-    
-
-    mp::queue q("main");
-
-    ALIAS_SetQueue( q );
-    gltex_background_loader gltex_bgl( q );
-    gs::interpreter ip( q );
-
-
-
-    q.open_logfile( "/tmp/q_log" );
-   // std::thread bg_thread( bg_thread_func );
-#if 0
+class gc_mainloop {
+public:
+    gc_mainloop( pan::gl_context &gl_ctx )
+        : gl_ctx_(gl_ctx),
+          q("main"),
+          gltex_bgl( q ),
+          ip( q ),
+          oldest_mouse_event(size_t(-1)),
+          newest_mouse_event(0)
     {
-        auto h = [](std::unique_ptr<msg::res_return<g_res::tag::gltex>> m ) {
-            DD_LOG << "got async resource: " << m->res_->cached() << " " << m->res_->name() << "\n";;
-        };
-        q.emplace_return_deluxe<msg::res_get<g_res::tag::gltex>>( q, h, "gltex.metal.metal20_1" );
-    }
-#endif
-    
-    q.add_default_stop_handler();
+        ALIAS_SetQueue( q );
 
-    q.add_handler<msg::key_event>( [] ( msg::ptr<msg::key_event> m ) {
+        legacy_init();
+
+        q.open_logfile( "/tmp/q_log" );
+       // std::thread bg_thread( bg_thread_func );
+    #if 0
+        {
+            auto h = [](std::unique_ptr<msg::res_return<g_res::tag::gltex>> m ) {
+                DD_LOG << "got async resource: " << m->res_->cached() << " " << m->res_->name() << "\n";;
+            };
+            q.emplace_return_deluxe<msg::res_get<g_res::tag::gltex>>( q, h, "gltex.metal.metal20_1" );
+        }
+    #endif
+
+        q.add_default_stop_handler();
+
+        q.add_handler<msg::client_frame>( std::bind( &gc_mainloop::on_client_frame, this, std::placeholders::_1 ));
+        q.add_handler<msg::world_frame>( std::bind( &gc_mainloop::on_world_frame, this, std::placeholders::_1 ));
+        q.add_handler<msg::key_event>( std::bind( &gc_mainloop::on_key_event, this, std::placeholders::_1 ));
+        q.add_handler<msg::mouse_event>( std::bind( &gc_mainloop::on_mouse_event, this, std::placeholders::_1 ));
+        q.add_handler<msg::gl_upload_texture>( std::bind( &gc_mainloop::on_gl_upload_texture, this, std::placeholders::_1 ));
+    }
+
+    void legacy_init() {
+        //
+        // init gc_state
+        //
+        gc_state = NEWTYPE( gc_state_t );
+        gc_state->state = gcState_none;
+        gc_state->udp_state = gcUdpState_none;
+
+        gc_state->id_first = 0x70000000;
+        gc_state->id_last  = 0x7fffffff;
+        gc_state->id_next = gc_state->id_first;
+
+        // init event queues
+        ByteIter_Init( &gc_state->bi_server, gc_state->buf_server, 0 );
+        ByteIter_Init( &gc_state->bi_client, gc_state->buf_client, 0 );
+        ByteIter_Init( &gc_state->bi_render, gc_state->buf_render, 0 );
+
+        // init gc_state shvars
+        SHP_SetVar( "gc_servermode", "local", 0 );
+        SHP_SetVar( "gc_id_bind_input", "0", 0 );
+        SHP_SetVar( "gc_id_bind_view", "0", 0 );
+        SHP_SetVar( "gc_id_player", "0", 0 );
+
+        // init ids
+        gc_state->id_bind_input = 123456; //UNIQUE_INVALIDE;
+        gc_state->id_bind_view = UNIQUE_INVALIDE;
+
+        rendershot = SHP_GetVar( "rendershot" );
+
+        gc_mousescale = SHP_GetVar( "gc_mousescale" );
+        gc_invmouse = SHP_GetVar( "gc_invmouse" );
+
+        gc_showfps = SHP_GetVar( "gc_showfps" );
+
+        auto var_dumpudp = SHP_GetVar( "gc_dumpudp" );
+
+        if ( var_dumpudp->ivalue > 0 )
+        {
+            char	str[256];
+            sprintf( str, "udpsend%d.dump", var_dumpudp->ivalue );
+            h_sendudp = fopen( str, "w" );
+            sprintf( str, "udprecv%d.dump", var_dumpudp->ivalue );
+            h_recvudp = fopen( str, "w" );
+        }
+        else
+        {
+            h_sendudp = NULL;
+            h_recvudp = NULL;
+        }
+
+        ms_wfbegin = SYS_GetMsec();
+        ms_rfbegin = SYS_GetMsec();
+        ms_rfdelta = 0;
+
+        gc_tps = 0;
+        gc_inmainloop = 1;
+
+        //
+        // start demo
+        //
+
+        gc_state->u_start_demo = true;
+    }
+
+    void operator()() {
+
+
+        q.add_handler<msg::menu_setpage> ( [&]( msg::ptr<msg::menu_setpage> m ) {
+            gs::variant &var = ip.env_get("menu_page");
+            auto name = var.get();
+            SHM_SetCurPage( name.c_str() );
+        });
+
+        q.add_handler<msg::game_shell_execute> ( [&]( msg::ptr<msg::game_shell_execute> m ) {
+            ip.exec( m->script_.c_str() );
+        });
+
+        q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
+            if ( h_sendudp )
+            {
+                fclose( h_sendudp );
+            }
+            if ( h_recvudp )
+            {
+                fclose( h_recvudp );
+            }
+            // request queue stop
+            q.emplace<msg::stop>();
+            //Exit();
+
+        });
+
+
+        q.add_handler<msg::gc_start_demo>( [&] (msg::ptr<msg::gc_start_demo> m ) {
+
+            DD_LOG << "lock2\n";
+            GC_CleanUp( gc_state );
+            GC_InitDemo( gc_state );
+            GC_InitGame( gc_state );
+            DD_LOG << "unlock2\n";
+        } );
+
+        q.add_handler<msg::gc_start_single>( [&] (msg::ptr<msg::gc_start_single> m ) {
+            res_scope.reset();
+            res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
+            gc_state->u_start_single = false;
+            GC_CleanUp( gc_state );
+            GC_InitSingle( gc_state );
+            GC_InitGame( gc_state );
+        } );
+
+        q.add_handler<msg::gc_drop_game>( [&] (msg::ptr<msg::gc_drop_game> m ) {
+            gc_state->u_drop_game = false;
+            GC_CleanUp( gc_state );
+
+            //
+            // restart demo
+            //
+            gc_state->u_start_demo = true;
+        } );
+
+        ms_wfbegin = SYS_GetMsec();
+
+
+
+        std::chrono::high_resolution_clock::time_point last_rf = std::chrono::high_resolution_clock::time_point::max();
+
+        std::deque<std::chrono::high_resolution_clock::duration> duration_avg;
+
+
+        q.add_handler<msg::swap_buffer>( [&] (std::unique_ptr<msg::swap_buffer> m ) {
+         //   R_SwapBuffer();
+            //usleep(1000000);
+            //I_Update();
+            gl_ctx_.swap_buffers();
+            gl_ctx_.dispatch_input( q );
+            q.emplace<msg::client_frame>();
+        });
+
+
+        q.add_handler<msg::print_queue_profiling>( [&] (std::unique_ptr<msg::print_queue_profiling> m ) {
+            q.print_profiling(std::cout);
+        });
+        //q.emplace<msg::swap_buffer>();
+
+
+        q.emplace<msg::gc_start_demo>();
+
+        q.emplace<msg::client_frame>();
+
+        mp::timer_source timer;
+
+        timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
+        timer.add_timer<msg::print_queue_profiling>( &q, std::chrono::seconds(5), true );
+
+        const char *script = "menu_page=\"newgame\";menu_setpage();";
+        q.emplace<msg::game_shell_execute>( script );
+        //ip.exec( script );
+    //    Exit();
+
+
+        while( !q.is_stopped() ) {
+            q.dispatch_pop();
+        }
+    }
+
+    void on_client_frame( msg::ptr<msg::client_frame> m ) {
+        static auto last_rf = std::chrono::high_resolution_clock::now();
+        static std::deque<std::chrono::high_resolution_clock::duration> duration_avg;
+
+        auto tp_now = std::chrono::high_resolution_clock::now();
+        if( false && last_rf != std::chrono::high_resolution_clock::time_point::max() ) {
+            duration_avg.push_back( tp_now - last_rf );
+
+            if( duration_avg.size() > 10 ) {
+                duration_avg.pop_front();
+            }
+
+            auto duration_all = std::accumulate( duration_avg.begin(), duration_avg.end(), std::chrono::high_resolution_clock::duration::zero(), std::plus<std::chrono::high_resolution_clock::duration>() );
+            duration_all /= duration_avg.size();
+            DD_LOG << "fps: " << (1000000.0 / std::chrono::duration_cast<std::chrono::microseconds>(duration_all).count()) << "\n";
+
+        }
+
+        last_rf = tp_now;
+
+        //I_Update();
+
+//         std::cout << "client_frame\n";
+
+        int now = SYS_GetMsec();
+        gc_state->time = now;
+
+
+        if( !false && newest_mouse_event != 0 ) {
+            DD_LOG << "event latency: " << (now - newest_mouse_event) << " - " << (now - oldest_mouse_event) << "\n";
+
+            oldest_mouse_event = size_t(-1);
+            newest_mouse_event = 0;
+        }
+
+        ms_rfbegin = now;
+        //
+        // no accumulation during demos ( fix sky )
+        //
+        if ( !gc_state->gc_is_demo )
+        {
+            GC_AccumulateViewAngles();
+        }
+
+        wf_mdx += md_x;
+        wf_mdy += md_y;
+
+        md_x = md_y = 0;
+
+        GC_RunClientFrame();
+
+        int ms2 = SYS_GetMsec();
+        ms_rfdelta = ms2-ms_rfbegin;
+
+//         sched_yield();
+
+        q.emplace<msg::swap_buffer>();
+
+    }
+
+    void on_world_frame(msg::ptr<msg::world_frame> m ) {
+        int now = SYS_GetMsec();
+        gc_state->time = now;
+//         DD_LOG << "world frame\n";
+
+        ms_wfbegin = SYS_GetMsec();
+        //inactive = 0;
+//             SND_Update();
+        gc_localworldframe++;
+
+//             if( !(gc_localworldframe%10) )
+//                 SHV_ScrollSOut();
+
+        ms_wfbegin = SYS_GetMsec();
+
+        if ( g_st )
+        {
+            pmod.lon = g_st->view_lon;
+            pmod.lat = g_st->view_lat;
+        }
+
+        GC_RunServerFrame();
+
+//             rfalltime = 0;
+//             rfnum = 0;
+
+        wf_mdx = wf_mdy = 0;
+    }
+
+
+    void on_key_event( msg::ptr<msg::key_event> m ) {
         std::cout << "key_event: " << m->event_.sym << "\n";
-        
+
         bool used = false;
-        
+
         if( m->event_.type == SYMTYPE_PRESS ) {
             used = SHM_Update(m->event_);
         }
-        
-        
+
+
         if( !used ) {
             SHI_FireKsym( m->event_ );
         }
-    });
-    
-    
-    size_t oldest_mouse_event = size_t(-1);
-    size_t newest_mouse_event = 0;
-    
-    q.add_handler<msg::mouse_event>( [&] (msg::ptr<msg::mouse_event> m ) {
+    }
+    void on_mouse_event(msg::ptr<msg::mouse_event> m ) {
         md_x += m->md_x_;
         md_y += m->md_y_;
-        
+
         oldest_mouse_event = std::min( size_t(m->ts_), oldest_mouse_event );
         newest_mouse_event = std::max( size_t(m->ts_), newest_mouse_event );
-        
-    } );
-    
-    q.add_handler<msg::gl_upload_texture>( []( msg::ptr<msg::gl_upload_texture> m ) {
+
+    }
+
+    void on_gl_upload_texture( msg::ptr<msg::gl_upload_texture> m ) {
         glBindTexture( GL_TEXTURE_2D, m->t_ );
 
+        GLint internal_format = -1;
+        if( m->pixel_format_ == GL_BGR ) {
+            internal_format = GL_RGB;
+        } else if( m->pixel_format_ == GL_BGRA ) {
+            internal_format = GL_RGBA;
+        } else {
+            __error( "unknown pixel format\n");
+        }
 
 
         //std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->max_level_  << " "  << m->w_ << " " << m->h_ << "\n";
-        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_BGR, GL_UNSIGNED_BYTE, m->data_.data() ); check_gl_error;
+        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, internal_format, m->w_, m->h_, 0, m->pixel_format_, GL_UNSIGNED_BYTE, m->data_.data() ); check_gl_error;
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         if( m->mip_level_ == 0 ) {
@@ -1410,509 +1603,27 @@ void GC_MainLoop( pan::gl_context &gl_ctx )
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m->mip_level_ ); check_gl_error;
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->max_level_ ); check_gl_error;
 
-    });
-
-
-//    q.add_handler<msg::gl_upload_texture>( []( msg::ptr<msg::test_tuple> m ) {
-//        glBindTexture( GL_TEXTURE_2D, m->t_ );
-
-
-
-//        std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->max_level_  << " "  << m->w_ << " " << m->h_ << "\n";
-//        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_RGB, GL_UNSIGNED_BYTE, m->data_.data() );
-//        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-////        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//        if( m->mip_level_ == 0 ) {
-//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
-//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-////            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-////            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-//        } else {
-//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-//        }
-
-////        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_LOD, m->mip_level_ );
-////        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, m->max_level_ );
-//        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m->mip_level_ );
-//        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->max_level_ );
-
-//    });
-
-#define ASYNC_MAINLOOP 1
-    
-#if ASYNC_MAINLOOP
-
-    q.add_handler<msg::menu_setpage> ( [&]( msg::ptr<msg::menu_setpage> m ) {
-        gs::variant &var = ip.env_get("menu_page");
-        auto name = var.get();
-        SHM_SetCurPage( name.c_str() );
-    });
-
-    q.add_handler<msg::game_shell_execute> ( [&]( msg::ptr<msg::game_shell_execute> m ) {
-        ip.exec( m->script_.c_str() );
-    });
-
-    q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
-        if ( h_sendudp )
-        {
-            fclose( h_sendudp );
-        }
-        if ( h_recvudp )
-        {
-            fclose( h_recvudp );
-        }
-        // request queue stop
-        q.emplace<msg::stop>();
-        //Exit();
-        
-    });
-    
-    
-    q.add_handler<msg::gc_start_demo>( [&] (msg::ptr<msg::gc_start_demo> m ) {
-
-        DD_LOG << "lock2\n";
-        GC_CleanUp( gc_state );
-        GC_InitDemo( gc_state );
-        GC_InitGame( gc_state );
-        DD_LOG << "unlock2\n";
-    } );
-    
-    q.add_handler<msg::gc_start_single>( [&] (msg::ptr<msg::gc_start_single> m ) {
-        res_scope.reset();
-        res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
-        gc_state->u_start_single = false;
-        GC_CleanUp( gc_state );
-        GC_InitSingle( gc_state );
-        GC_InitGame( gc_state );
-    } );
-    
-    q.add_handler<msg::gc_drop_game>( [&] (msg::ptr<msg::gc_drop_game> m ) {
-        gc_state->u_drop_game = false;
-        GC_CleanUp( gc_state );
-        
-        //
-        // restart demo
-        // 
-        gc_state->u_start_demo = true;
-    } );
-    
-    ms_wfbegin = SYS_GetMsec();
-    
-    q.add_handler<msg::world_frame>( [&] (msg::ptr<msg::world_frame> m ) {
-        int now = SYS_GetMsec();
-        gc_state->time = now;
-//         DD_LOG << "world frame\n";
-        
-        ms_wfbegin = SYS_GetMsec();
-        inactive = 0;
-//             SND_Update();
-        gc_localworldframe++;
-
-//             if( !(gc_localworldframe%10) )
-//                 SHV_ScrollSOut();
-        
-        ms_wfbegin = SYS_GetMsec();
-
-        if ( g_st )
-        {               
-            pmod.lon = g_st->view_lon;
-            pmod.lat = g_st->view_lat;
-        }
-
-        GC_RunServerFrame();
-
-//             rfalltime = 0;
-//             rfnum = 0;
-        
-        wf_mdx = wf_mdy = 0;
-    } );
-    
-    std::chrono::high_resolution_clock::time_point last_rf = std::chrono::high_resolution_clock::time_point::max(); 
-    
-    std::deque<std::chrono::high_resolution_clock::duration> duration_avg;
-    
-    q.add_handler<msg::client_frame>( [&] (msg::ptr<msg::client_frame> m ) {
-//    q.add_handler( [&] (msg::ptr<msg::client_frame> m ) {
-        
-        auto tp_now = std::chrono::high_resolution_clock::now();   
-        if( false && last_rf != std::chrono::high_resolution_clock::time_point::max() ) {
-            duration_avg.push_back( tp_now - last_rf );
-            
-            if( duration_avg.size() > 10 ) {
-                duration_avg.pop_front();   
-            }
-            
-            auto duration_all = std::accumulate( duration_avg.begin(), duration_avg.end(), std::chrono::high_resolution_clock::duration::zero(), std::plus<std::chrono::high_resolution_clock::duration>() );
-            duration_all /= duration_avg.size();
-            DD_LOG << "fps: " << (1000000.0 / std::chrono::duration_cast<std::chrono::microseconds>(duration_all).count()) << "\n";
-            
-        }
-        
-        last_rf = tp_now;
-        
-        //I_Update();
-        
-//         std::cout << "client_frame\n";
-        
-        int now = SYS_GetMsec();
-        gc_state->time = now;
-
-
-        if( !false && newest_mouse_event != 0 ) {
-            DD_LOG << "event latency: " << (now - newest_mouse_event) << " - " << (now - oldest_mouse_event) << "\n";
-            
-            oldest_mouse_event = size_t(-1);
-            newest_mouse_event = 0;
-        }
-        
-        
-//         if( ( now - ms_wfbegin ) >= MSEC_WF )
-//         {
-//             ms_wfbegin = SYS_GetMsec();
-//             inactive = 0;
-// //             SND_Update();
-//             gc_localworldframe++;
-// 
-// //             if( !(gc_localworldframe%10) )
-// //                 SHV_ScrollSOut();
-//             
-//             ms_wfbegin = SYS_GetMsec();
-// 
-//             if ( g_st )
-//             {               
-//                 pmod.lon = g_st->view_lon;
-//                 pmod.lat = g_st->view_lat;
-//             }
-// 
-//             GC_RunServerFrame();
-// 
-// //             rfalltime = 0;
-// //             rfnum = 0;
-//             
-//             wf_mdx = wf_mdy = 0;
-//         }
-
-        
-        
-        
-        
-        ms_rfbegin = now;
-        
-        //
-        // no accumulation during demos ( fix sky )
-        //
-        if ( !gc_state->gc_is_demo )
-        {
-            GC_AccumulateViewAngles();
-        }
-        
-        wf_mdx += md_x;
-        wf_mdy += md_y;
-        
-        md_x = md_y = 0;
-        
-        GC_RunClientFrame();
-
-        int ms2 = SYS_GetMsec();
-        ms_rfdelta = ms2-ms_rfbegin;
-        
-//         sched_yield();
-        
-        
-        q.emplace<msg::swap_buffer>();
-        
-        
-    } );
-    
-    
-    q.add_handler<msg::swap_buffer>( [&] (std::unique_ptr<msg::swap_buffer> m ) {
-     //   R_SwapBuffer();
-        //usleep(1000000);
-        //I_Update();
-        gl_ctx.swap_buffers();
-        gl_ctx.dispatch_input( q );
-        q.emplace<msg::client_frame>();
-    });
-#endif
-    
-    q.add_handler<msg::print_queue_profiling>( [&] (std::unique_ptr<msg::print_queue_profiling> m ) {
-        q.print_profiling(std::cout);
-    });
-    
-    
-#if ASYNC_MAINLOOP
-    q.emplace<msg::gc_start_demo>();
-    
-    q.emplace<msg::client_frame>();
-#endif
-    mp::timer_source timer;
-    
-    timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
-    timer.add_timer<msg::print_queue_profiling>( &q, std::chrono::seconds(5), true );
-    
-    const char *script = "menu_page=\"newgame\";menu_setpage();";
-    q.emplace<msg::game_shell_execute>( script );
-    //ip.exec( script );
-//    Exit();
-    
-#if ASYNC_MAINLOOP
-    while( !q.is_stopped() ) {
-        q.dispatch_pop();
     }
 
+private:
+    pan::gl_context &gl_ctx_;
+    mp::queue q;
 
- //   bg_q.stop();
-  //  bg_thread.join();
-    
-    return;
-#endif    
-    
-#if !ASYNC_MAINLOOP
-	for( ;; )
-	{
-		static int	rfalltime = 0, rfnum = 0;
-		
-		int	now;
+    gltex_background_loader gltex_bgl;
+    gs::interpreter ip;
+    std::auto_ptr<g_res::manager::scope_guard> res_scope;
 
-		inactive = 1;
-		now = SYS_GetMsec();
+    size_t oldest_mouse_event;
+    size_t newest_mouse_event;
+};
 
-		gc_state->time = now;
-  //      g_res::manager::get_instance().dump_scopes();
-		//
-		// check async state updates
-		//
 
-		if ( gc_state->u_quit )
-		{
-			if ( h_sendudp )
-			{
-				fclose( h_sendudp );
-			}
-			if ( h_recvudp )
-			{
-				fclose( h_recvudp );
-			}
-			Exit();
-		}
-		if ( gc_state->u_start_demo )
-		{
-			gc_state->u_start_demo = false;
-			GC_CleanUp( gc_state );
-			GC_InitDemo( gc_state );
-			GC_InitGame( gc_state );
-		}
-		if ( gc_state->u_start_single )
-		{
-            
-            res_scope.reset();
-            res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
-			gc_state->u_start_single = false;
-			GC_CleanUp( gc_state );
-			GC_InitSingle( gc_state );
-			GC_InitGame( gc_state );
-		}
-		if ( gc_state->u_connect_public_server )
-		{
-			gc_state->u_connect_public_server = false;
-			GC_CleanUp( gc_state );
-			GC_InitConnectPublicServer( gc_state );
-		}
-		if ( gc_state->u_connect_failed )
-		{
-			gc_state->u_connect_failed = false;
-//			GC_CleanUpConnectPublicServer( gc_state );
-//			GC_CleanUp( gc_state );
-			gc_state->u_drop_game = true;
-		}
-		if ( gc_state->u_start_public_server )
-		{
-			gc_state->u_start_public_server = false;
-			GC_CleanUp( gc_state );
-			GC_InitPublicServer( gc_state );
-		}
-		if ( gc_state->u_start_game )
-		{
-			gc_state->u_start_game = false;
-			GC_InitGame( gc_state );
-		}
-		if ( gc_state->u_drop_game )
-		{
-			gc_state->u_drop_game = false;
-			GC_CleanUp( gc_state );
-
-			//
-			// restart demo
-			// 
-			gc_state->u_start_demo = true;
-		}
-
-#if 0
-		if ( gc_state->timeout_func )
-		{
-			if ( gc_state->time >= gc_state->timeout )
-			{
-				void (*timeout_func)(gc_state_t *state ) = gc_state->timeout_func;
-				gc_state->timeout_func = NULL;
-				timeout_func( gc_state );
-			}
-		}
-#endif	
-
-		for ( i = 0; i < GC_STATE_MAX_CONNECTED_CLIENTS; i++ )
-		{
-			if ( gc_state->connected_cl_tbl[i].state != connectedClientState_none )
-			{
-				GC_ConnectedClientRun( gc_state, &gc_state->connected_cl_tbl[i] );
-			}		       
-		}
-
-		if ( gc_state->connected_sv.state != connectedServerState_none )
-		{
-			GC_ConnectedServerRun( gc_state, &gc_state->connected_sv );
-		}
-		
-		if ( gc_state->udp_state == gcUdpState_is_init )
-		{
-			GC_NetHandleLocalPort( gc_state );
-		}
-		
-		
-		I_Update();
-
-		while( q.dispatch_pop_noblock() ) {}
-		
-		GC_ClientInputUpdate();
-		md_x = md_y = 0;
-
-		if( ( now - ms_wfbegin ) >= MSEC_WF )
-		{
-			inactive = 0;
-			SND_Update();
-			gc_localworldframe++;
-
-			if( !(gc_localworldframe%10) )
-				SHV_ScrollSOut();
-			
-			ms_wfbegin = SYS_GetMsec();
-
-			if ( g_st )
-			{				
-				pmod.lon = g_st->view_lon;
-				pmod.lat = g_st->view_lat;
-			}
-
-			GC_RunServerFrame();
-
-			rfalltime = 0;
-			rfnum = 0;
-			
-			wf_mdx = wf_mdy = 0;
-		}
-
-		{
-            unsigned int time = SYS_GetMsec();
-            static unsigned int last = time;
-#if 0  
-            if( time - last > 2000 ) {
-               
-                g_res::manager::get_instance().dump_scopes();
-                last = time;
-            }
-#endif       
-        }
-		
-		{
-			unsigned int	ms1, ms2;
-
-			inactive = 0;
-			ms1 = SYS_GetMsec();
-			ms_rfbegin = ms1;
-			GC_RunClientFrame();
-            R_SwapBuffer();    
-#if D3DYNE_OS_UNIXLIKE
-			{
-				struct timespec ts;
-				ts.tv_sec = 0;
-				ts.tv_nsec = 16666666; // 60fps according to google (and Wolfram Alpha ;-) ). Man, how times have changed ...
-				nanosleep( &ts, NULL );
-			}
-#else
-			Sleep( 16 );
-#endif
-			gc_tpf = count_be_num_tri;
-			tps += gc_tpf;
-			ms2 = SYS_GetMsec();
-			ms_rfdelta = ms2-ms1;
-			rfnum++;
-			rfalltime += ms_rfdelta;
-		}
-
-		gc_ftimes[gc_renderframe&7] = ms_rfdelta;
-
-		if( (gc_renderframe&7) == 0 )
-		{
-			fp_t	alltime = 0.0;
-			
-			for( i = 0; i < 8; i++ )
-			{
-				alltime += gc_ftimes[i];
-			
-
-			}
-			gc_fpfps = 1000.0 / (alltime / 8.0);
-		}
-
-		if( !inactive )
-		{
-			loops = 0;
-		}
-		
-	
-		loops++;
-
-	}
-#endif
-	TFUNC_LEAVE;
-}
-
-#if 0
-void GC_FillTime()
+void GC_MainLoop( pan::gl_context &gl_ctx )
 {
-	int	count = 0;
-	int	ms_rflast;
+    gc_mainloop mainloop( gl_ctx );
+    mainloop();
 
-	TFUNC_ENTER;
-
-	for( ;; ) // do renderframes
-	{
-		ms_rfbegin = SYS_GetMsec();
-
-
-
-		if( ((int)ms_rfdelta) > ((int)( MSEC_WF - ( ms_rfbegin - ms_wfbegin ))))
-		{
-//			cprintf( "time left: %d %d\n", 100 - ( ms_rfbegin - ms_wfbegin ), ms_rfdelta );
-			if( ms_rfdelta >= 100 )
-				ms_rfdelta = 20;
-
-
-			break;
-
-		} else
-			GC_DoRenderFrame();
-
-		ms_rfdelta = SYS_GetMsec() - ms_rfbegin;
-
-	}
-
-
-//	cprintf( "%d fps", count * 10 );
-	TFUNC_LEAVE;
 }
-
-#endif
 
 void GC_UpdatePmod()
 {

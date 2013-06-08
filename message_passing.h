@@ -206,6 +206,7 @@ public:
         if( sender_handler_check ) {
             if( handler_map_.find(typeinfo) == handler_map_.end() ) {
                 std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
+                abort();
                 return;
             }
         }
@@ -229,6 +230,7 @@ public:
         if( sender_handler_check ) {
             if( handler_ret_map_.find(typeinfo) == handler_ret_map_.end() ) {
                 std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
+                abort();
                 return TOKEN_NONE;
             }
         }
@@ -254,6 +256,7 @@ public:
         if( sender_handler_check ) {
             if( handler_ret_map_.find(typeinfo) == handler_ret_map_.end() ) {
                 std::cerr << "no handler registered for message type. not enqueing " << typeinfo.name() << "\n";
+                abort();
                 return;
             }
         }

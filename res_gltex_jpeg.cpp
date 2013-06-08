@@ -233,7 +233,7 @@ static void jpeg_error_exit( j_common_ptr cinfo)
 	(*cinfo->err->format_message) (cinfo, buffer);
 	throw std::runtime_error( buffer );
 }
-
+#if 0
 void Res_CreateGLTEX_rgb( int width, int height, unsigned char *color_buf );
 res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
 {
@@ -337,5 +337,5 @@ res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
 	return gltex;
 }
 	
-
+#endif
 	

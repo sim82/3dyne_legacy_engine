@@ -78,10 +78,11 @@ public:
 
 class gl_upload_texture : public base {
 public:
-    gl_upload_texture( GLuint t, GLuint w, GLuint h, GLint mip_level, GLint max_level, std::vector<uint8_t> && data )
+    gl_upload_texture( GLuint t, GLuint w, GLuint h, GLenum pixel_format, GLint mip_level, GLint max_level, std::vector<uint8_t> && data )
         : t_(t),
           w_(w),
           h_(h),
+          pixel_format_(pixel_format),
           mip_level_(mip_level),
           max_level_(max_level),
           data_(std::move(data))
@@ -91,6 +92,7 @@ public:
 
     GLuint t_;
     GLuint w_;
+    GLenum pixel_format_;
     GLuint h_;
     GLint mip_level_;
     GLint max_level_;

@@ -122,7 +122,7 @@ void ShockHandler()
 #if D3DYNE_OS_WIN
   //  _asm{ int 3 }
 #endif
-	exit( -1 );
+    abort();
 }
 
 #if D3DYNE_OS_WIN
@@ -412,7 +412,8 @@ void Exit( void )
 	SaveConfig();
 	ShutDownBasic();
 	fprintf( stderr, "Exit: the following segmentation fault is caused by Mesa!\n" );
-	exit( 0 );
+
+    exit( 0 );
 }
 	
 
@@ -423,6 +424,7 @@ int g_main( int argc, char* argv[] )
 	int	i, i2;
 	char	text[128];
 	char	argline[128];
+
 
 #if DD_USE_DLT
     DLT_REGISTER_APP("LOG","Test Application for Logging");
@@ -441,7 +443,7 @@ int g_main( int argc, char* argv[] )
 
 	StartUpBasic();
 	signal( SIGSEGV, (void(*) (int)) SecureShutDown );
-	signal( SIGABRT, (void(*) (int)) SecureShutDown );
+//	signal( SIGABRT, (void(*) (int)) SecureShutDown );
 	signal( SIGTERM, (void(*) (int)) SecureShutDown );
 //        signal( SIGQUIT, (void(*) ()) SecureShutDown );
 	signal( SIGINT,  (void(*) (int)) SecureShutDown );

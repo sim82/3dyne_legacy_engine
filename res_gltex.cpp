@@ -101,17 +101,22 @@ struct dds_header {
 
 class gltex_data_source {
 public:
+
+
     virtual ~gltex_data_source() {}
 
     virtual std::pair<size_t,size_t> mipmap_size( size_t level ) = 0;
     virtual std::pair<const char *,const char *> mipmap_data( size_t level ) = 0;
     virtual size_t max_level() = 0;
+    virtual GLenum pixel_format() = 0;
 };
 
 
+static size_t pixel_size( GLint pf ) {
+    return (pf == GL_BGR) ? 3 : 4;
+}
+
 class gltex_data_source_dds_mmap : public gltex_data_source {
-
-
 public:
     gltex_data_source_dds_mmap( const char *name )
         : h_(name),
@@ -153,7 +158,9 @@ public:
         }
         return std::make_pair( ptr, ptr + w * h * (header_->ddspf.dwRGBBitCount / 8));
     }
-
+    GLenum pixel_format() {
+        return GL_BGR;
+    }
 
 private:
     ibase::file_handle h_;
@@ -161,6 +168,137 @@ private:
     const dds_header *header_;
     const char *data_;
 };
+
+
+std::vector<uint8_t> next_mipmap( size_t w, size_t h, const uint8_t *data, GLint pf ) {
+    size_t ps = pixel_size(pf);
+    size_t line_size = w * ps;
+
+
+
+    std::vector<uint8_t> out_buf;
+
+
+    size_t out_w = w / 2;
+    size_t out_h = h / 2;
+    out_buf.reserve( out_w * out_h * ps );
+
+    const uint8_t *ldata = data;
+    const uint8_t *ldata2 = data + line_size;
+    for( size_t i = 0; i < out_h; ++i ) {
+        for( size_t j = 0; j < out_w; ++j ) {
+            for( size_t k = 0; k < ps; ++k ) {
+                int cp = *ldata + *(ldata + ps) + *ldata2 + *(ldata2+ps);
+                out_buf.push_back( cp / 4 );
+            }
+
+            ldata += ps * 2;
+            ldata2 += ps * 2;
+        }
+        ldata += line_size;
+        ldata2 += line_size;
+    }
+
+    return out_buf;
+}
+
+class gltex_data_source_tga_mmap : public gltex_data_source {
+#pragma pack(push)
+#pragma pack(1)
+    typedef struct
+    {
+        int8_t  identsize;          // size of ID field that follows 18 byte header (0 usually)
+        int8_t  colourmaptype;      // type of colour map 0=none, 1=has palette
+        int8_t  imagetype;          // type of image 0=none,1=indexed,2=rgb,3=grey,+8=rle packed
+
+        int16_t colourmapstart;     // first colour map entry in palette
+        int16_t colourmaplength;    // number of colours in palette
+        int8_t  colourmapbits;      // number of bits per palette entry 15,16,24,32
+
+        int16_t xstart;             // image x origin
+        int16_t ystart;             // image y origin
+        int16_t width;              // image width in pixels
+        int16_t height;             // image height in pixels
+        int8_t  bits;               // image bits per pixel 8,16,24,32
+        int8_t  descriptor;         // image descriptor bits (vh flip bits)
+
+        // pixel data follows header
+
+    } tga_header;
+#pragma pack(pop)
+
+public:
+    gltex_data_source_tga_mmap( const char *name )
+        : h_(name),
+          map_(h_),
+          header_((tga_header*)(map_.ptr())),
+          data_(map_.ptr() + sizeof( tga_header ))
+    {
+
+        std::cerr << "tga: " << header_->width << " " << header_->height << std::endl;
+        assert( header_->dwSize == sizeof(dds_header));
+
+        auto m0 = mipmap_data(0);
+        auto m0s = mipmap_size(0);
+        ms[0] = next_mipmap(m0s.first, m0s.second, (uint8_t *)m0.first, pixel_format() );
+        ms[1] = next_mipmap(m0s.first/2, m0s.second/2, ms[0].data(), pixel_format() );
+
+    }
+
+    std::pair<size_t,size_t> mipmap_size( size_t level ) {
+        size_t w = header_->width;
+        size_t h = header_->height;
+
+        for( size_t i = 0; i < level; ++i ) {
+            w /= 2;
+            h /= 2;
+        }
+
+        return std::make_pair( w, h );
+    }
+    size_t max_level() {
+        return 2;
+    }
+
+    std::pair<const char *,const char *> mipmap_data( size_t level ) {
+        if( level == 0 ) {
+            assert( level == 0 );
+
+            size_t w = header_->width;
+            size_t h = header_->height;
+
+            const char *ptr = data_ + header_->identsize;
+
+            return std::make_pair( ptr, ptr + w * h * (header_->bits / 8));
+        } else {
+            assert( level < 3 );
+            const uint8_t *first = &(ms[level-1].front());
+            const uint8_t *last = (&(ms[level-1].back())) + 1;
+            return std::make_pair( (const char*)first, (const char*)last );
+        }
+    }
+
+    GLenum pixel_format() {
+        switch( header_->bits ) {
+        case 32:
+            return GL_BGRA;
+        case 24:
+            return GL_BGR;
+
+        default:
+            __error( "unknown pixel format");
+        }
+    }
+
+private:
+    ibase::file_handle h_;
+    ibase::file_handle::mapping map_;
+    const tga_header *header_;
+    const char *data_;
+
+    std::vector<uint8_t> ms[2];
+};
+
 
 class gltex_loader_impl {
 
@@ -206,7 +344,7 @@ public:
     void run() {
         {
             std::unique_lock<std::mutex> lock(mtx_);
-            sleep_cond_.wait_for(lock, std::chrono::seconds(3));
+            sleep_cond_.wait_for(lock, std::chrono::seconds(1));
         }
         while( !do_stop_ ) {
             std::unique_lock<std::mutex> lock(mtx_);
@@ -230,8 +368,22 @@ public:
             size_t w, h;
             std::tie( w, h) = j.src_->mipmap_size( j.mipmap_level_ );
             auto data = j.src_->mipmap_data( j.mipmap_level_ );
-            tq_.emplace<msg::gl_upload_texture>( j.target_, w, h, j.mipmap_level_, j.src_->max_level(), std::vector<uint8_t>(data.first, data.second) );
-            if( !false ) {
+
+            size_t data_size = std::distance(data.first, data.second);
+            std::vector<uint8_t> flip_buf;
+            flip_buf.reserve(data_size);
+
+            size_t ps = pixel_size(j.src_->pixel_format());
+            size_t line_size = w * ps;
+            for( size_t i = 0; i < h; ++i ) {
+                const char *first = data.second - (line_size * (i + 1));
+
+                flip_buf.insert( flip_buf.end(), first, first + line_size );
+//                std::cout << i << "\n";
+            }
+
+            tq_.emplace<msg::gl_upload_texture>( j.target_, w, h, j.src_->pixel_format(), j.mipmap_level_, j.src_->max_level(), std::move(flip_buf) );
+            if( false ) {
                 auto x = std::accumulate( data.first, data.second, 0, std::plus<const char>() );
                 std::cout << "x: " << int(x) << "\n";
             }
@@ -239,7 +391,7 @@ public:
             //q_.pop_front();
             q_.erase(it);
 
-            sleep_cond_.wait_for(lock, std::chrono::milliseconds(10));
+            //sleep_cond_.wait_for(lock, std::chrono::milliseconds(5));
         }
 
 
@@ -279,6 +431,8 @@ private:
 };
 
 static gltex_loader_impl *s_loader = 0;
+
+static std::deque<gltex_loader_impl::job> s_deferred_jobs;
 
 typedef struct 
 {
@@ -382,161 +536,8 @@ static GLuint CreateTexObject( hobj_t *resobj )
 
 //typedef std::vector<uint8_t> tex_data;
 
-static GLuint s_texobj = -1;
 
-void rgb_mipmaps( int mipmap, int width, int height, unsigned char *color_buf, std::vector<gltex_loader_impl::job> &out_jobs )
-{
 #if 0
-    int		size;
-    unsigned char	*half_buf;
-    int		x, y;
-
-
-    out_jobs.push_back( gltex_loader::job() );
-    gltex_loader::job & j = out_jobs.back();
-    j.target_ = s_texobj;
-    j.width_ = width;
-    j.height_ = height;
-    j.mipmap_level_ = mipmap;
-    j.data_.assign( color_buf, color_buf + (width * height *3));
-
-    //glTexImage2D( GL_TEXTURE_2D, mipmap, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, color_buf );
-
-    mipmap++;
-
-        assert( width > 0 && height > 0 );
-
-    //if ( width == 2 || height == 2 )
-    //    return;
-
-    if( width * height < 64 ) {
-        return;
-    }
-
-    width /= 2;
-    height /= 2;
-
-    size = width * height * 3;
-    half_buf = (unsigned char *)alloca( size );
-
-    for ( x = 0; x < width; x++ )
-    {
-        for ( y = 0; y < height; y++ )
-        {
-            unsigned int	r, g, b;
-            int	x2, y2, xx, yy;
-            int		pb;
-
-            r=g=b=0;
-
-            for ( xx = 0; xx <= 1; xx++ )
-            {
-                for ( yy = 0; yy <= 1; yy++ )
-                {
-                    x2 = x*2 + xx;
-                    y2 = y*2 + yy;
-
-                    pb = (width*2*y2 + x2)*3;
-                    r+=color_buf[pb];
-                    g+=color_buf[pb+1];
-                    b+=color_buf[pb+2];
-                }
-            }
-
-            pb = (width*y + x)*3;
-            half_buf[pb] = r / 4;
-            half_buf[pb+1] = g / 4;
-            half_buf[pb+2] = b / 4;
-        }
-    }
-
-    rgb_mipmaps( mipmap, width, height, half_buf, out_jobs );
-#endif
-}
-
-void Res_CreateGLTEX_rgb_mipmap( int mipmap, int width, int height, unsigned char *color_buf )
-{
-#if 1
-#if 0
-    std::vector<gltex_loader::job> jobs;
-    rgb_mipmaps( 0, width, height, color_buf, jobs );
-
-    if( !jobs.empty() ) {
-        size_t max_level = jobs.size() - 1;
-
-        for( auto it = jobs.rbegin(); it != jobs.rend(); ++it ) {
-            it->max_level_ = max_level;
-            s_loader->add(std::move(*it));
-        }
-    }
-#else
-    std::shared_ptr<gltex_data_source> ds{ std::make_shared<gltex_data_source_dds_mmap>( "textures/wall/con1_1.dds" )};
-    size_t num_mipmap = ds->max_level() + 1;
-    for( size_t i = 0; i < num_mipmap; ++i ) {
-        gltex_loader_impl::job j;
-        j.mipmap_level_ = i;
-        j.src_ = ds;
-        j.target_ = s_texobj;
-        s_loader->add( std::move(j) );
-    }
-#endif
-#else
-
-	int		size;
-	unsigned char	*half_buf;
-	int		x, y;
-
-	glTexImage2D( GL_TEXTURE_2D, mipmap, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, color_buf );
-
-	mipmap++;
-
-        assert( width > 0 && height > 0 );
-        
-	if ( width == 1 || height == 1 )
-		return;
-
-	width /= 2;
-	height /= 2;
-
-	size = width * height * 3;
-	half_buf = (unsigned char *)alloca( size );
-
-	for ( x = 0; x < width; x++ )
-	{
-		for ( y = 0; y < height; y++ )
-		{
-			unsigned int	r, g, b;
-			int	x2, y2, xx, yy;
-			int		pb;
-
-			r=g=b=0;
-
-			for ( xx = 0; xx <= 1; xx++ )
-			{
-				for ( yy = 0; yy <= 1; yy++ )
-				{
-					x2 = x*2 + xx;
-					y2 = y*2 + yy;
-					
-					pb = (width*2*y2 + x2)*3;
-					r+=color_buf[pb];					
-					g+=color_buf[pb+1];
-					b+=color_buf[pb+2];
-				}
-			}
-			
-			pb = (width*y + x)*3;
-			half_buf[pb] = r / 4;
-			half_buf[pb+1] = g / 4;
-			half_buf[pb+2] = b / 4;
-		}
-	}
-
-	Res_CreateGLTEX_rgb_mipmap( mipmap, width, height, half_buf );	
-#endif
-}
-
-
 void Res_CreateGLTEX_rgba_mipmap( int mipmap, int width, int height, unsigned char *color_buf )
 {
 	int		size;
@@ -672,7 +673,7 @@ void Res_CreateGLTEX_rgba( int width, int height, unsigned char *color_buf )
 #endif
 
 }
-
+#endif
 
 
 // ==================================================
@@ -695,594 +696,8 @@ res_gltex_register_t * Res_SetupRegisterGLTEX( char *path )
 }
 
 
-/*
-  ==============================
-  Res_CacheInGLTEX_tga
 
-  ==============================
-*/
-res_gltex_cache_t * Res_CacheInGLTEX_tga( res_gltex_register_t *reg )
-{
-	ib_file_t	*h;
-// 	int		filesize;
-// 	char unsigned 		*buf;
 
-	unsigned char   ident_len;
-// 	unsigned char   cmap_type;
-	unsigned char   image_type;
-// 	unsigned short  cmap_origin;
-	unsigned short  cmap_len;
-	unsigned char   centry_size;
-// 	unsigned short  image_xorg;
-// 	unsigned short  image_yorg;
-	unsigned short  image_width;
-	unsigned short  image_height;
-	unsigned char   pixel_size;
-// 	unsigned char   image_discr;
-
-	unsigned char	alpha, red, green, blue;
-	unsigned char	*image, *ptr;
-
-	bool_t		fliph;
-	int		i, w;
-	res_gltex_cache_t		*gltex;
-	int		pixels;
-
-	h = IB_Open( reg->path );
-	if ( !h )
-		__error( "load of '%s' failed\n", reg->path );
-
-#if 0
-	filesize = IB_GetSize( h );
-
-	buf = alloca( filesize );
-//	buf = MM_Malloc( filesize );
-
-
-//	printf( "tga: alloca(%d) = %p\n", filesize, buf );
-//	printf( "filesize %s: %d\n", reg->path, filesize );
-
-	if ( !buf )
-		__error( "alloca for '%s' failed\n" );
-
-
-	
-
-	IB_Read( buf, filesize, 1, h );
-	IB_Close( h );
-#if 0
-	for ( i = 0 ; i < filesize; i++ )
-	{
-		printf( "%d ", (int)buf[i] );
-	}
-	printf( "pixels: %d\n", i );
-#endif
-
-	//
-	// interpret buffer as tga
-	//
-
-	U_BeginUnpack( U_PACKED_BIN, buf, filesize );
-
-	// extract tga header
-	U_Unpacks8( &ident_len );
-	U_Unpacks8( &cmap_type );
-	U_Unpacks8( &image_type );
-	U_Unpacks16( &cmap_origin );
-	U_Unpacks16( &cmap_len );
-	U_Unpacks8( &centry_size );
-	U_Unpacks16( &image_xorg );
-	U_Unpacks16( &image_yorg );
-	U_Unpacks16( &image_width );
-	U_Unpacks16( &image_height );
-	U_Unpacks8( &pixel_size );
-	U_Unpacks8( &image_discr );
-
-	// skip ident
-	U_UnpackSkip( ident_len );
-	// skip cmap
-	U_UnpackSkip( (cmap_len * centry_size) / 8 );
-
-#endif
-
-	ident_len = IB_GetChar( h );
-	/*cmap_type = */IB_GetChar( h );
-	image_type = IB_GetChar( h );
-	/*cmap_origin = */IB_GetShort( h );
-    cmap_len = IB_GetShort( h );
-	centry_size = IB_GetChar( h );
-	/*image_xorg = */IB_GetShort( h );
-	/*image_yorg = */IB_GetShort( h );
-	image_width = IB_GetShort( h );
-	image_height = IB_GetShort( h );
-	pixel_size = IB_GetChar( h );
-	/*image_discr = */IB_GetChar( h );
-
-	IB_Skip( h, ident_len );
-	IB_Skip( h, (cmap_len * centry_size) / 8 );
-
-	gltex = NEWTYPE( res_gltex_cache_t );
-	gltex->width = image_width;
-	gltex->height = image_height;
-
-	fliph = true;
-
-    
-	//
-	// mipmap hack
-	//
-	if ( gltex->width != gltex->height )
-	{
-        
-
-        flag_mipmap_hint = false;
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	}
-
-	if ( ( image_type == 2 ) && pixel_size == 24 /*&& image_discr == 32*/  )
-	{
-		// 24-bit-BGR-tga
-		// read as RGB
-		pixels = image_width * image_height;
-		ptr = image = (unsigned char*)alloca( pixels * 3 );
-
-		if ( fliph )
-		{
-			ptr = ptr + (image_width * image_height * 3 - image_width * 3);
-		}
-
-		for ( i = 0; i < image_height; i++ )
-		{
-			for ( w = 0; w < image_width; w++ )
-			{
-				// blue
-//			U_Unpacks8( &blue );
-				blue = IB_GetChar( h );
-				// green
-//			U_Unpacks8( &green );
-				green = IB_GetChar( h );
-				// red
-//			U_Unpacks8( &red );
-				red = IB_GetChar( h );
-				
-				*ptr = red;
-				ptr++;
-				*ptr = green;
-				ptr++;
-				*ptr = blue;
-				ptr++;						
-			}	      
-
-			if ( fliph )
-				ptr -= image_width * 3 * 2;
-		}
-
-		
-		
-		gltex->comp = resGltexComponents_rgb;
-		Res_CreateGLTEX_rgb( image_width, image_height, image );
-
-	}
-	else if ( ( image_type == 2 )&& pixel_size == 32 /*&& image_discr == 40*/ )
-	{
-		// 32-bit-ARGB-tga
-		// read as RGBA
-		pixels = image_width * image_height;
-		ptr = image = (unsigned char*)alloca( pixels * 4 );
-
-		if ( fliph )
-		{
-			ptr = ptr + (image_width * image_height * 4 - image_width * 4);
-		}
-
-		
-		for ( i = 0; i < image_height; i++ )
-		{
-			for ( w = 0; w < image_width; w++ )
-			{
-				// blue
-//			U_Unpacks8( &blue );
-				blue = IB_GetChar( h );
-				// green
-//			U_Unpacks8( &green );
-				green = IB_GetChar( h );
-				// red
-//			U_Unpacks8( &red );
-				red = IB_GetChar( h );
-				// alpha
-//			U_Unpacks8( &alpha );
-				alpha = IB_GetChar( h );
-				
-				*ptr = red;
-				ptr++;
-				*ptr = green;
-				ptr++;
-				*ptr = blue;
-				ptr++;	
-				*ptr = alpha;
-				ptr++;
-			}
-			
-
-			if ( fliph )
-				ptr -= image_width * 4 * 2;
-		}			
-
-		
-		gltex->comp = resGltexComponents_rgba;		
-		Res_CreateGLTEX_rgba( image_width, image_height, image );
-		
-	}
-	else
-	{
-		if( image_type == 10 )
-			__error( "RLE compression not supported. '%s'\n", reg->path );
-		else
-			__error( "format not supported. '%s'\n", reg->path );
-	}
-
-//	U_EndUnpack();
-	IB_Close( h );
-	
-	return gltex;	
-}
-
-/*
-  ==============================
-  Res_CacheInGLTEX_arr
-
-  ==============================
-*/
-res_gltex_cache_t * Res_CacheInGLTEX_arr( res_gltex_register_t *reg )
-{
-    __error( "out of order\n" );
-    return 0;
-    
-#if 0
-	ib_file_t	*h;
-	int		filesize;
-	unsigned char	*buf;
-	int		pos;
-
-	char		id[4];
-	short		tmp;
-// 	int		mipmap;
-// 	int		stepnum;
-	int		width;
-	int		height;
-	int		flags;
-
-	res_gltex_cache_t	*gltex;
-
-	h = IB_Open( reg->path );
-	if ( !h )
-		__error( "load of '%s' failed\n", reg->path );
-
-	filesize = IB_GetSize( h );
-
-	buf = (unsigned char*)alloca( filesize );
-//	printf( "arr: alloca(%d) = %p\n", filesize, buf );
-
-	if ( !buf )
-		__error( "alloca for '%s' failed\n" );
-
-	IB_Read( buf, filesize, 1, h );
-	IB_Close( h );
-
-	//
-	// interpret buffer as arr
-	//
-
-	U_BeginUnpack( U_PACKED_BIN, buf, filesize );
-
-	// extract arr header
-	U_UnpackString( id, 4 );
-
-	if ( memcmp( id, "ARRM", 4 ) )
-	{
-		__error( "arr header check failed\n" );
-	}
-
-	U_UnpackSkip( 32 );
-
-	// mipmap num
-	U_Unpacks16( &tmp );
-// 	mipmap = (int) tmp;
-
-	// width
-	U_Unpacks16( &tmp );
-	width = (int) tmp;
-
-	// height
-	U_Unpacks16( &tmp );
-	height = (int) tmp;
-
-	// stepnum
-	U_Unpacks16( &tmp );
-// 	stepnum = (int) tmp;
-
-	// flags
-	U_Unpacks32( &flags );
-
-	
-	gltex = NEWTYPE( res_gltex_cache_t );
-	gltex->width = width;
-	gltex->height = height;
-
-	//
-	// mipmap hack
-	//
-	if ( gltex->width != gltex->height )
-	{
-		flag_mipmap_hint = false;
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	}
-
-	pos = U_EndUnpack();
-	buf+=pos;
-	Res_CreateGLTEX_565( width, height, buf );
-
-	return gltex;
-    
-#endif
-}
-
-#if 0
-/*
-  ==============================
-  Res_CacheInGltex_JPG
-
-  ==============================
-*/
-
-// util funcs ...
-
-#define INPUT_BUF_SIZE	4096 // should be good for us, too.
-
-typedef struct {
-	struct jpeg_source_mgr	pub;
-	
-	ib_file_t	*h;
-	JOCTET	buffer[INPUT_BUF_SIZE];
-} my_source_mgr;
-
-typedef struct my_error_mgr {
-	struct jpeg_error_mgr pub;    /* "public" fields */
-	jmp_buf setjmp_buffer;        /* for return to caller */
-} *my_error_ptr;
-
-typedef my_source_mgr *my_src_ptr;
-
-
-// I do this with the jpeglib style, although I don't really know, what I am doing.
-
-METHODDEF( void )init_source( j_decompress_ptr cinfo )
-{
-	// what the hell are they doing in jdatasrc.c?
-}
-
-METHODDEF( boolean )fill_input_buf( j_decompress_ptr cinfo )
-{
-	my_src_ptr	src = (my_src_ptr) cinfo->src;
-	int	num, i, c;
-
-	__named_message( "\n" );
-
-	if( !src->h )
-	{
-		__warning( "handle == NULL.\n" );
-		// very faky.
-		src->buffer[0] = (JOCTET) 0xFF;
-		src->buffer[1] = (JOCTET) JPEG_EOI;
-		num = 2;
-	}
-
-      
-	for( i = 0; i < INPUT_BUF_SIZE; i++ )
-	{
-		c = IB_GetChar( src->h );
-
-
-//		printf( "%d\n", c );
-		if( c == EOF )
-		{
-			break;
-		}
-
-
-		src->buffer[i] =  c;
-
-	}
-       
-	num = i;
-	
-	src->pub.next_input_byte = src->buffer;
-	src->pub.bytes_in_buffer = num;
-	
-	return TRUE;
-}	
-
-METHODDEF( void ) skip_input_data( j_decompress_ptr cinfo, long num )
-{
-	int	i;
-
-	my_src_ptr src = (my_src_ptr) cinfo->src;
-
-//	__named_message( "%d\n", num );
-
-
-	if (num > 0) {
-		while (num > (long) src->pub.bytes_in_buffer) 
-		{
-			num -= (long) src->pub.bytes_in_buffer;
-			fill_input_buf(cinfo);
-			/* note we assume that fill_input_buffer will never return FALSE,         
-       * so suspension need not be handled.                                     
-       */                                                                       
-		}
-		src->pub.next_input_byte += (size_t) num;
-		src->pub.bytes_in_buffer -= (size_t) num;
-	}
-
-
-}
-
-METHODDEF( void ) term_source( j_decompress_ptr cinfo )
-{
-}
-
-void jpeg_ibase_src( j_decompress_ptr cinfo, ib_file_t *h )
-{
-	my_src_ptr	src;
-
-	if( cinfo->src != NULL )
-	{
-		__warning( "cinfo->src != NULL\n" );
-	}
-	cinfo->src = (struct jpeg_source_mgr *) NEWTYPE( my_source_mgr );
-	src = (my_src_ptr) cinfo->src; 
-	
-	src->pub.init_source = init_source;
-	src->pub.fill_input_buffer = fill_input_buf;
-	src->pub.skip_input_data = skip_input_data;
-	src->pub.resync_to_restart = jpeg_resync_to_restart; /* use default method */ 
-	src->pub.term_source = term_source;
-	src->h = h;
-	src->pub.bytes_in_buffer = 0; /* forces fill_input_buffer on first read */
-	src->pub.next_input_byte = NULL; /* until buffer loaded */
-
-}      
-
-static void jpeg_error_exit( j_common_ptr cinfo)
-{
-	my_error_ptr myerr = (my_error_ptr) cinfo->err;
-	(*cinfo->err->output_message) (cinfo);
-
-	longjmp (myerr->setjmp_buffer, 1);
-}
-
-
-res_gltex_cache_t * Res_CacheInGLTEX_jpg( res_gltex_register_t *reg )
-{
-	struct jpeg_decompress_struct cinfo;
-
-	ib_file_t	*h;
-	unsigned char *buffer;
-	int row_stride;
-	struct my_error_mgr jerr;
-	FILE	*b;
-
-	int	pixels;
-	unsigned char	*image, *ptr;
-	res_gltex_cache_t		*gltex;
-	
-
-	h = IB_Open( reg->path );
-//	b = fopen( "test.jpg", "rb" );
-
-	if( !h )
-	{
-		__error( "load of '%s' failed\n", reg->path );
-	}
-
-//	memset( &cinfo, 0, sizeof( struct jpeg_decompress_struct ));
-
-	cinfo.err = jpeg_std_error(&jerr.pub);
-	jerr.pub.error_exit = jpeg_error_exit;
-	
-	if (setjmp (jerr.setjmp_buffer))                                              
-	{
-
-		jpeg_destroy_decompress (&cinfo);
-		if( h )
-			IB_Close( h );
-		__error( "XJT: JPEG load error\n");
-	       
-	}
-
-
-
-	printf( "%p\n", cinfo.err );
-
-
-	// step 1
-
-	jpeg_create_decompress(&cinfo);	
-//	cinfo.err = jpeg_std_error (&jerr.pub);                                       
-//	printf( "%p\n", cinfo.err );
-
-	// step 2
-	jpeg_ibase_src(&cinfo, h);
-//	jpeg_stdio_src( &cinfo, b );
-
-//	printf( "back\n" );
-	
-	// step 3
-	jpeg_read_header(&cinfo, TRUE);
-
-
-/*
-	if( cinfo.jpeg_color_space != JCS_RGB )
-	{
-		__error( "colorspace is not RGB\n" );
-	}
-*/
-
-
-	jpeg_start_decompress( &cinfo );
-//	printf( "jpeg: %d %d %d\n", cinfo.image_width, cinfo.image_height, cinfo.output_components );
-	if( cinfo.output_components != 3 )
-	{
-		__error( "jpeg file '%s' is not RGB\n", reg->path );
-	}
-
-	pixels = cinfo.output_width * cinfo.output_height;
-	image = MM_Malloc( pixels * 3 );
-       
-
-
-	row_stride = cinfo.output_width * 3;
-
-	ptr = image + ( row_stride * (cinfo.output_height - 1) );
-
-	buffer = alloca( row_stride );
-
-//	printf( "row_stride: %d\n", row_stride );
-
-       
-
-	while( cinfo.output_scanline < cinfo.output_height )
-	{
-//		__named_message( "%d\n", cinfo.output_scanline );
-		jpeg_read_scanlines( &cinfo, &buffer, 1 ); 
-	
-		memcpy( ptr, buffer, row_stride );
-		
-		ptr -= row_stride;
-
-	}
-
-//	memset( image, 0, pixels *3 );
-
-	jpeg_finish_decompress( &cinfo );
-	jpeg_destroy_decompress( &cinfo );
-	IB_Close( h );
-
-	gltex = NEWTYPE( res_gltex_cache_t );
-	gltex->width = cinfo.output_width;
-	gltex->height = cinfo.output_height;
-
-	__message( "%s: %d %d\n", reg->path, gltex->width, gltex->height );
-
-	gltex->comp = resGltexComponents_rgb;
-	Res_CreateGLTEX_rgb( cinfo.output_width, cinfo.output_height, image );
-//	__error( "good\n" );
-
-	return gltex;
-}
-	
-
-#endif	
 	
 
 /*
@@ -1335,66 +750,70 @@ void Res_CacheGLTEX( g_resource_t *r )
 	res_register = (res_gltex_register_t *) r->res_register;
 
 	texobj = CreateTexObject( res_register->resobj );
-    s_texobj = texobj;
-#if 1
-	if ( strstr( res_register->path, ".tga" ) )
-	{		
-		r->res_cache = Res_CacheInGLTEX_tga( (res_gltex_register_t *)r->res_register );
-	}
-	else if ( strstr( res_register->path, ".arr" ) )
-	{
-		r->res_cache = Res_CacheInGLTEX_arr( (res_gltex_register_t *)r->res_register );
-	}	
-	else if ( strstr( res_register->path, ".jpg" ) )
-	{
-		r->res_cache = Res_CacheInGLTEX_jpg( (res_gltex_register_t *)r->res_register );
-	}	
-	else
-	{
-		__error( "can't recognize image file format of '%s'\n", res_register->path );
-	}
+
+
+    {
+        res_gltex_cache_t		*gltex;
+
+        gltex = NEWTYPE( res_gltex_cache_t );
+
+
+        std::shared_ptr<gltex_data_source> ds;
+
+
+
+        if( strstr( res_register->path, ".tga")) {
+            ds = std::make_shared<gltex_data_source_tga_mmap>( res_register->path );
+        } else {
+            ds = std::make_shared<gltex_data_source_dds_mmap>( "textures/wall/con1_1.dds" );
+        }
+        DD_LOG << "cache: " << res_register->path << "\n";
+
+        std::tie( gltex->width, gltex->height) = ds->mipmap_size(0);
+        switch( ds->pixel_format() ) {
+        case GL_RGB:
+        case GL_BGR:
+            gltex->comp = resGltexComponents_rgb;
+            break;
+        case GL_RGBA:
+        case GL_BGRA:
+            gltex->comp = resGltexComponents_rgb;
+            break;
+
+        default:
+            __error( "unknown pixel format\n");
+        }
+
+
+
+        size_t num_mipmap = ds->max_level() + 1;
+        for( size_t i = 0; i < num_mipmap; ++i ) {
+            gltex_loader_impl::job j;
+            j.mipmap_level_ = i;
+            j.src_ = ds;
+            j.target_ = texobj;
+
+
+            if( s_loader != nullptr ) {
+                s_loader->add( std::move(j) );
+            } else {
+                // HACK: if the loader hash not been started, store the jobs in the deferred list
+                s_deferred_jobs.push_back(std::move(j));
+            }
+
+
+        }
+        r->res_cache = gltex;
+    }
+
+
+
+
     ((res_gltex_cache_t *)(r->res_cache))->texobj = texobj;
 //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 3 );
     r->state = G_RESOURCE_STATE_CACHED;
-    s_texobj = -1;
-#else
-    {
-        int width = 64;
-        int height = 64;
-        auto gltex = NEWTYPE( res_gltex_cache_t );
-        r->res_cache = gltex;
-
-        ((res_gltex_cache_t *)(r->res_cache))->texobj = texobj;
-        ((res_gltex_cache_t *)(r->res_cache))->width = 64;
-        ((res_gltex_cache_t *)(r->res_cache))->height = 64;
-        ((res_gltex_cache_t *)(r->res_cache))->comp = resGltexComponents_rgb;
-
-        std::vector<unsigned char> tmp(width * height * 4);
 
 
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-        int mipmap = 0;
-        while( width >= 1 && height >= 1 ) {
-            std::generate( tmp.begin(), tmp.end(), []() {return rand() % 256;});
-//            std::fill( tmp.begin(), tmp.end(), rand() % 256);
-            if( mipmap >= 3 ) {
-                glTexImage2D( GL_TEXTURE_2D, mipmap, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, tmp.data() );
-            }
-            GLenum err;
-            if ( ( err = glGetError() ) != GL_NO_ERROR ) {
-                __error( "glTexImage2D failed: %d\n", err );
-            }
-            width /= 2;
-            height /= 2;
-            ++mipmap;
-        }
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 3 );
-        //glTexImage2D( GL_TEXTURE_2D, 1, GL_RGBA, width/2, height/2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tmp.data() );
-        r->state = G_RESOURCE_STATE_CACHED;
-
-    }
-#endif
 
 	GC_GiveBackTime();
 		
@@ -1468,14 +887,11 @@ void gltex::cache ( res* r ) {
         texobj = CreateTexObject( res_gltex->rs_->resobj );
         
     }
+#if 0
     if ( strstr( res_gltex->rs_->path, ".tga" ) )
     {       
         res_gltex->cs_ = Res_CacheInGLTEX_tga( res_gltex->rs_ );
     }
-    else if ( strstr( res_gltex->rs_->path, ".arr" ) )
-    {
-        res_gltex->cs_ = Res_CacheInGLTEX_arr( res_gltex->rs_ );
-    }   
     else if ( strstr( res_gltex->rs_->path, ".jpg" ) )
     {
         res_gltex->cs_ = Res_CacheInGLTEX_jpg( res_gltex->rs_ );
@@ -1484,7 +900,7 @@ void gltex::cache ( res* r ) {
     {
         __error( "can't recognize image file format of '%s'\n", res_gltex->rs_->path );
     }
-
+#endif
     res_gltex->cs_->texobj = texobj;
     
     
@@ -1527,6 +943,12 @@ gltex_background_loader::gltex_background_loader(mp::queue &q)
     // HACK: make the loader kind of a singleton internally
     assert( s_loader == nullptr );
     s_loader = impl_.get();
+
+    // HACK2: add 'deferred jobs' (jobs that have been collected before the background loader was started)
+    for( auto & j : s_deferred_jobs ) {
+        s_loader->add( std::move(j) );
+    }
+
 }
 
 gltex_background_loader::~gltex_background_loader()
