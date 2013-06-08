@@ -77,6 +77,8 @@
 
 #endif 
 
+#include "gl_bits.h"
+
 //#include <sys/time.h>                                                           
 
 #include <errno.h>
@@ -1334,9 +1336,7 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 
     
 
-    const char *script = "menu_page=\"newgame\";menu_setpage();";
-    ip.exec( script );
-//    Exit();
+
 
     q.open_logfile( "/tmp/q_log" );
    // std::thread bg_thread( bg_thread_func );
@@ -1350,7 +1350,7 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
 #endif
     
     q.add_default_stop_handler();
-    
+
     q.add_handler<msg::key_event>( [] ( msg::ptr<msg::key_event> m ) {
         std::cout << "key_event: " << m->event_.sym << "\n";
         
@@ -1383,23 +1383,31 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
         glBindTexture( GL_TEXTURE_2D, m->t_ );
 
 
-        if( m->mip_level_ == 0 ) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        }
+
         std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->w_ << " " << m->h_ << "\n";
         glTexImage2D( GL_TEXTURE_2D, m->mip_level_, GL_RGB, m->w_, m->h_, 0, GL_RGB, GL_UNSIGNED_BYTE, m->data_.data() );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m->mip_level_ );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->mip_level_ + 6 );
+
+        if( m->mip_level_ == 0 ) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); check_gl_error;
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); check_gl_error;
+        }
+
     });
 
 #define ASYNC_MAINLOOP 1
     
 #if ASYNC_MAINLOOP
+
     q.add_handler<msg::menu_setpage> ( [&]( msg::ptr<msg::menu_setpage> m ) {
         gs::variant &var = ip.env_get("menu_page");
         auto name = var.get();
         SHM_SetCurPage( name.c_str() );
+    });
+
+    q.add_handler<msg::game_shell_execute> ( [&]( msg::ptr<msg::game_shell_execute> m ) {
+        ip.exec( m->script_.c_str() );
     });
 
     q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
@@ -1600,6 +1608,10 @@ void GC_MainLoop( mp::queue &q, gs::interpreter &ip, pan::gl_context &gl_ctx )
     timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
     timer.add_timer<msg::print_queue_profiling>( &q, std::chrono::seconds(5), true );
     
+    const char *script = "menu_page=\"newgame\";menu_setpage();";
+    q.emplace<msg::game_shell_execute>( script );
+    //ip.exec( script );
+//    Exit();
     
 #if ASYNC_MAINLOOP
     while( !q.is_stopped() ) {

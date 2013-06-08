@@ -65,6 +65,7 @@
 #include "la_service.h"
 #include "r_interface.h"
 
+
 g_map_t		*a_map;	// set by R_InitData
 
 static sh_var_t	*r_lod = NULL;
@@ -1933,8 +1934,8 @@ void R_RenderView( void )
 	ICU_BeginSubImageUploadFrame( &r_upload_frame );
 
 	R_HandleShapeControlJobs();
-	R_ValidateVisibleShapes();
-	R_InsertVisibleShapesIntoShaders();
+    R_ValidateVisibleShapes();
+    R_InsertVisibleShapesIntoShaders();
 
 	// upload all subimage changed 
 	ICU_EndSubImageUploadFrame( &r_upload_frame );

@@ -6,6 +6,7 @@
 #include "compiler_config.h"
 #if !D3DYNE_OS_WIN
 #include <X11/Xlib.h>
+#include <GL/glx.h>
 #else
 struct SDL_Surface;
 #endif
@@ -88,15 +89,13 @@ private:
 };
     
     
-    
-};
+
 #else
 
 
 class gl_context {
 public:
     struct config {
-
         config() : width_(0), height_(0), fullscreen_(false) {}
 
         size_t width_;
