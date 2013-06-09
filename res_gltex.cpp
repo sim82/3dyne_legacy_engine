@@ -236,7 +236,7 @@ public:
     {
 
         std::cerr << "tga: " << header_->width << " " << header_->height << std::endl;
-        assert( header_->dwSize == sizeof(dds_header));
+
 
         auto m0 = mipmap_data(0);
         auto m0s = mipmap_size(0);
@@ -391,7 +391,7 @@ public:
             //q_.pop_front();
             q_.erase(it);
 
-            //sleep_cond_.wait_for(lock, std::chrono::milliseconds(5));
+            sleep_cond_.wait_for(lock, std::chrono::milliseconds(5));
         }
 
 
