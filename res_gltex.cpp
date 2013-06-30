@@ -40,6 +40,9 @@
 #include <map>
 #include <iostream>
 #include <tuple>
+#include <memory>
+#include <openjpeg.h>
+#include <turbojpeg.h>
 #include "interfaces.h"
 #include "g_shared.h"
 
@@ -61,6 +64,57 @@
 
 #pragma pack(push)
 #pragma pack(1)
+
+
+class mipmap_cache_wrap : public mipmap_cache {
+public:
+    mipmap_cache_wrap( size_t width, size_t height, const uint8_t *first, const uint8_t *last )
+        : size_(width, height),
+          data_(first, last )
+    {}
+
+    virtual std::pair<size_t,size_t> size() {
+        return size_;
+    }
+
+    virtual std::pair<const uint8_t *,const uint8_t *> data() {
+        return data_;
+    }
+
+    std::pair<size_t,size_t> size_;
+    std::pair<const uint8_t *,const uint8_t *> data_;
+};
+
+class mipmap_cache_copy : public mipmap_cache {
+public:
+    mipmap_cache_copy( size_t width, size_t height, std::vector<uint8_t> && data )
+        : width_(width),
+          height_(height),
+          data_( std::move(data) )
+    {}
+
+//    mipmap_cache_copy( size_t width, size_t height, size_t size )
+//        : width_(width),
+//          height_(height),
+//          data_(size)
+//    {}
+
+    virtual std::pair<size_t,size_t> size() {
+        return std::make_pair( width_, height_ );
+    }
+
+    virtual std::pair<const uint8_t *,const uint8_t *> data() {
+        return data_nonconst();
+    }
+
+    virtual std::pair<uint8_t *, uint8_t *> data_nonconst() {
+        return std::make_pair(data_.data(), data_.data() + data_.size());
+    }
+private:
+    size_t width_;
+    size_t height_;
+    std::vector<uint8_t> data_;
+};
 
 
 
@@ -103,12 +157,16 @@ class gltex_data_source {
 public:
 
 
-    virtual ~gltex_data_source() {}
+    virtual ~gltex_data_source() {
+      //  DD_LOG << "~gltex_data_source()\n";
+    }
 
     virtual std::pair<size_t,size_t> mipmap_size( size_t level ) = 0;
-    virtual std::pair<const char *,const char *> mipmap_data( size_t level ) = 0;
+    virtual std::pair<const uint8_t *,const uint8_t *> mipmap_data( size_t level ) = 0;
     virtual size_t max_level() = 0;
     virtual GLenum pixel_format() = 0;
+
+    virtual std::shared_ptr<mipmap_cache> get_cache( size_t level ) = 0;
 };
 
 
@@ -122,7 +180,7 @@ public:
         : h_(name),
           map_(h_),
           header_((dds_header*)(map_.ptr() + sizeof(int32_t))),
-          data_(map_.ptr() + sizeof(int32_t) + sizeof( dds_header ))
+          data_((const uint8_t*) map_.ptr() + sizeof(int32_t) + sizeof( dds_header ))
     {
 
         std::cout << "dds: " << header_->dwWidth << " " << header_->dwHeight << "\n";
@@ -145,11 +203,11 @@ public:
         return std::make_pair( w, h );
     }
 
-    std::pair<const char *,const char *> mipmap_data( size_t level ) {
+    std::pair<const uint8_t *,const uint8_t *> mipmap_data( size_t level ) {
         size_t w = header_->dwWidth;
         size_t h = header_->dwHeight;
 
-        const char *ptr = data_;
+        const uint8_t *ptr = data_;
         const size_t pixel_width = (header_->ddspf.dwRGBBitCount / 8);
         for( size_t i = 0; i < level; ++i ) {
             ptr += (w * h * pixel_width);
@@ -161,12 +219,18 @@ public:
     GLenum pixel_format() {
         return GL_BGR;
     }
+    std::shared_ptr<mipmap_cache> get_cache( size_t level ) {
+        __error( "not implemented\n");
+    }
+
 
 private:
     ibase::file_handle h_;
     ibase::file_handle::mapping map_;
     const dds_header *header_;
-    const char *data_;
+    const uint8_t *data_;
+
+
 };
 
 
@@ -183,20 +247,32 @@ std::vector<uint8_t> next_mipmap( size_t w, size_t h, const uint8_t *data, GLint
     size_t out_h = h / 2;
     out_buf.reserve( out_w * out_h * ps );
 
-    const uint8_t *ldata = data;
-    const uint8_t *ldata2 = data + line_size;
+    const uint8_t *ldata1_1 = data;
+    const uint8_t *ldata1_2 = data + ps;
+
+    const uint8_t *ldata2_1 = data + line_size;
+    const uint8_t *ldata2_2 = data + ps + line_size;
+
     for( size_t i = 0; i < out_h; ++i ) {
         for( size_t j = 0; j < out_w; ++j ) {
+            // loop over color/alpha components
             for( size_t k = 0; k < ps; ++k ) {
-                int cp = *ldata + *(ldata + ps) + *ldata2 + *(ldata2+ps);
+                // average over 4 adjacent pixels from the higher-res texture
+                int cp = *(ldata1_1++) + *(ldata1_2++) + *(ldata2_1++) + *(ldata2_2++);
                 out_buf.push_back( cp / 4 );
             }
+            // jump over next pixel
+            ldata1_1 += ps;
+            ldata1_2 += ps;
+            ldata2_1 += ps;
+            ldata2_2 += ps;
 
-            ldata += ps * 2;
-            ldata2 += ps * 2;
         }
-        ldata += line_size;
-        ldata2 += line_size;
+        // jump over next line
+        ldata1_1 += line_size;
+        ldata1_2 += line_size;
+        ldata2_1 += line_size;
+        ldata2_2 += line_size;
     }
 
     return out_buf;
@@ -232,50 +308,80 @@ public:
         : h_(name),
           map_(h_),
           header_((tga_header*)(map_.ptr())),
-          data_(map_.ptr() + sizeof( tga_header ))
+          data_((const uint8_t *)map_.ptr() + sizeof( tga_header ))
     {
 
-        std::cerr << "tga: " << header_->width << " " << header_->height << std::endl;
+        //std::cerr << "tga: " << header_->width << " " << header_->height << std::endl;
+        if( !need_flip_ )
+        {
+            size_t w = header_->width;
+            size_t h = header_->height;
+            const uint8_t *ptr = data_ + header_->identsize;
+            cache_.emplace_back( std::make_shared<mipmap_cache_wrap>( w, h, ptr, ptr + w * h * (header_->bits / 8)));
+        } else {
+            size_t w = header_->width;
+            size_t h = header_->height;
+            const uint8_t *ptr = data_ + header_->identsize;
+
+            auto cache_ptr = std::make_shared<mipmap_cache_copy>( w, h, std::vector<uint8_t>( ptr, ptr + w * h * (header_->bits / 8)));
+            cache_.emplace_back( cache_ptr );
 
 
-        auto m0 = mipmap_data(0);
-        auto m0s = mipmap_size(0);
-        ms[0] = next_mipmap(m0s.first, m0s.second, (uint8_t *)m0.first, pixel_format() );
-        ms[1] = next_mipmap(m0s.first/2, m0s.second/2, ms[0].data(), pixel_format() );
+            // flip scanlines to match opengl texcoord-system
+            size_t ps = pixel_size(pixel_format());
+            size_t line_size = w * ps;
+            std::vector<uint8_t> tmp;
+            auto data = cache_ptr->data_nonconst();
+
+            // pointer to the start of the first line
+            uint8_t *insert_pos = data.first;
+
+            // pointer to the start of the last line
+            uint8_t *get_pos = data.second - line_size;
+
+            for( size_t i = 0; i < h / 2; ++i ) {
+
+                tmp.assign(insert_pos, insert_pos + line_size );
+
+                std::copy( get_pos, get_pos + line_size, insert_pos );
+                std::copy( tmp.begin(), tmp.end(), get_pos );
+
+                // increase/decrease line pointers
+                insert_pos += line_size;
+                get_pos -= line_size;
+            }
+
+
+        }
+
+        const uint8_t *md = (const uint8_t *)cache_.back()->data().first;
+        auto ms = mipmap_size(0);
+
+        // generate mipmaps
+        while( ms.first > 4 && ms.second > 4 ) {
+            cache_.emplace_back( std::make_shared<mipmap_cache_copy>(ms.first / 2, ms.second / 2, next_mipmap(ms.first, ms.second, md, pixel_format() )));
+            //gen_mipmaps_.emplace_back( next_mipmap(ms.first, ms.second, md, pixel_format() ));
+            md = cache_.back()->data().first;
+            ms.first /= 2;
+            ms.second /= 2;
+        }
 
     }
 
     std::pair<size_t,size_t> mipmap_size( size_t level ) {
-        size_t w = header_->width;
-        size_t h = header_->height;
 
-        for( size_t i = 0; i < level; ++i ) {
-            w /= 2;
-            h /= 2;
-        }
-
-        return std::make_pair( w, h );
+        assert( level < cache_.size() );
+        return cache_[level]->size();
     }
     size_t max_level() {
-        return 2;
+        //return gen_mipmaps_.size(); // gen_mipmaps_[0] is mipmap level 1!
+        return cache_.size() - 1;
     }
 
-    std::pair<const char *,const char *> mipmap_data( size_t level ) {
-        if( level == 0 ) {
-            assert( level == 0 );
+    std::pair<const uint8_t *,const uint8_t *> mipmap_data( size_t level ) {
+        assert( level < cache_.size() );
+        return cache_[level]->data();
 
-            size_t w = header_->width;
-            size_t h = header_->height;
-
-            const char *ptr = data_ + header_->identsize;
-
-            return std::make_pair( ptr, ptr + w * h * (header_->bits / 8));
-        } else {
-            assert( level < 3 );
-            const uint8_t *first = &(ms[level-1].front());
-            const uint8_t *last = (&(ms[level-1].back())) + 1;
-            return std::make_pair( (const char*)first, (const char*)last );
-        }
     }
 
     GLenum pixel_format() {
@@ -290,16 +396,98 @@ public:
         }
     }
 
+    std::shared_ptr<mipmap_cache> get_cache( size_t level ) {
+        assert( level < cache_.size() );
+        return cache_[level];
+    }
+
 private:
     ibase::file_handle h_;
     ibase::file_handle::mapping map_;
     const tga_header *header_;
-    const char *data_;
+    const uint8_t *data_;
 
-    std::vector<uint8_t> ms[2];
+    std::vector<std::vector<uint8_t>> gen_mipmaps_;
+
+    std::vector<std::shared_ptr<mipmap_cache> > cache_;
+    const static bool need_flip_ = true;
+
+    //std::vector<uint8_t> ms[2];
 };
+#if 0
+class gltex_data_source_jpeg2000_mmap : public gltex_data_source {
+    static void error_callback (const char *msg, void *client_data) {
+        DD_LOG << "jp2k error: " << msg << "\n";
+    }
+    static void warning_callback (const char *msg, void *client_data) {
+        DD_LOG << "jp2k warning: " << msg << "\n";
+    }
+    static void info_callback (const char *msg, void *client_data) {
+        DD_LOG << "jp2k info: " << msg << "\n";
+    }
+public:
+    gltex_data_source_jpeg2000_mmap( const char *name )
+    : h_(name), map_(h_)
+    {
+        event_mgr_.error_handler = error_callback;
+        event_mgr_.info_handler = info_callback;
+        event_mgr_.warning_handler = warning_callback;
 
+        codec_ = opj_create_decompress(CODEC_JP2);
+        opj_set_event_mgr( (opj_common_ptr)codec_, &event_mgr_, stderr );
+        opj_setup_decoder( codec_, &parameters_ );
+        opj_set_default_decoder_parameters( &parameters_ );
+        opj_setup_decoder( codec_, &parameters_ );
 
+        cio_ = opj_cio_open( (opj_common_ptr)codec_, const_cast<unsigned char *>((const unsigned char *)map_.ptr()), h_.get_size() ); // aahhrg, stupid c progrmmers
+    }
+
+    virtual ~gltex_data_source_jpeg2000_mmap() {
+        opj_cio_close( cio_ );
+        opj_destroy_decompress( codec_ );
+    }
+
+    size_t max_level() {
+        return 0;
+    }
+
+    std::pair<size_t,size_t> mipmap_size( size_t level ) {
+        opj_image_t *image = opj_decode( codec_, cio_ );
+        image->
+
+    }
+
+    std::pair<const uint8_t *,const uint8_t *> mipmap_data( size_t level ) {
+        if( level == 0 ) {
+            assert( level == 0 );
+
+            size_t w = header_->width;
+            size_t h = header_->height;
+
+            const uint8_t *ptr = data_ + header_->identsize;
+
+            return std::make_pair( ptr, ptr + w * h * (header_->bits / 8));
+        } else {
+            assert( level <= gen_mipmaps_.size() );
+
+            const size_t idx = level - 1;
+            const uint8_t *first = &(gen_mipmaps_[idx].front());
+            const uint8_t *last = (&(gen_mipmaps_[idx].back())) + 1;
+            return std::make_pair( first, last );
+        }
+    }
+
+private:
+    ibase::file_handle h_;
+    ibase::file_handle::mapping map_;
+    opj_event_mgr_t event_mgr_;
+    opj_dparameters_t parameters_;
+
+    opj_dinfo_t *codec_;
+    opj_cio_t *cio_;
+
+};
+#endif
 class gltex_loader_impl {
 
 public:
@@ -365,33 +553,9 @@ public:
             auto it = q_.begin();
             auto &j = it->second;
 
-            size_t w, h;
-            std::tie( w, h) = j.src_->mipmap_size( j.mipmap_level_ );
-            auto data = j.src_->mipmap_data( j.mipmap_level_ );
-
-            size_t data_size = std::distance(data.first, data.second);
-            std::vector<uint8_t> flip_buf;
-            flip_buf.reserve(data_size);
-
-            size_t ps = pixel_size(j.src_->pixel_format());
-            size_t line_size = w * ps;
-            for( size_t i = 0; i < h; ++i ) {
-                const char *first = data.second - (line_size * (i + 1));
-
-                flip_buf.insert( flip_buf.end(), first, first + line_size );
-//                std::cout << i << "\n";
-            }
-
-            tq_.emplace<msg::gl_upload_texture>( j.target_, w, h, j.src_->pixel_format(), j.mipmap_level_, j.src_->max_level(), std::move(flip_buf) );
-            if( false ) {
-                auto x = std::accumulate( data.first, data.second, 0, std::plus<const char>() );
-                std::cout << "x: " << int(x) << "\n";
-            }
-//            tq_.emplace<msg::test_tuple>( std::make_tuple( j.target_, j.width_, j.height_, j.mipmap_level_, j.max_level_, std::move( j.data_ )) );
-            //q_.pop_front();
+            tq_.emplace<msg::gl_upload_texture>( j.target_, j.src_->get_cache(j.mipmap_level_), j.src_->pixel_format(), j.mipmap_level_, j.src_->max_level());
             q_.erase(it);
-
-            sleep_cond_.wait_for(lock, std::chrono::milliseconds(5));
+            sleep_cond_.wait_for(lock, std::chrono::milliseconds(1));
         }
 
 
@@ -537,143 +701,7 @@ static GLuint CreateTexObject( hobj_t *resobj )
 //typedef std::vector<uint8_t> tex_data;
 
 
-#if 0
-void Res_CreateGLTEX_rgba_mipmap( int mipmap, int width, int height, unsigned char *color_buf )
-{
-	int		size;
-	unsigned char	*half_buf;
-	int		x, y;
-	GLenum		err;
-	
-	printf( "[%d:%d,%d] ", mipmap, width, height );
-	glTexImage2D( GL_TEXTURE_2D, mipmap, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, color_buf );
-	if ( ( err = glGetError() ) != GL_NO_ERROR )
-		__error( "glTexImage2D failed: %d\n", err );
-	
-	mipmap++;
 
-	if ( width == 1 || height == 1 )
-		return;
-
-	width /= 2;
-	height /= 2;
-
-	size = width * height * 4;
-	half_buf = (unsigned char *)alloca( size );
-
-	for ( x = 0; x < width; x++ )
-	{
-		for ( y = 0; y < height; y++ )
-		{
-			unsigned int	r, g, b, a;
-			int	x2, y2, xx, yy;
-			int		pb;
-
-			r=g=b=a=0;
-
-			for ( xx = 0; xx <= 1; xx++ )
-			{
-				for ( yy = 0; yy <= 1; yy++ )
-				{
-					x2 = x*2 + xx;
-					y2 = y*2 + yy;
-					
-					pb = (width*2*y2 + x2)*4;
-					r+=color_buf[pb];					
-					g+=color_buf[pb+1];
-					b+=color_buf[pb+2];
-					a+=color_buf[pb+3];
-				}
-			}
-			
-			pb = (width*y + x)*4;
-			half_buf[pb] = r / 4;
-			half_buf[pb+1] = g / 4;
-			half_buf[pb+2] = b / 4;
-			half_buf[pb+3] = a / 4;
-		}
-	}
-
-	Res_CreateGLTEX_rgba_mipmap( mipmap, width, height, half_buf );	
-}
-
-void Res_CreateGLTEX_565( int width, int height, unsigned char *color_buf )
-{
-	int		i, pixelnum;
-	unsigned short	p16;
-	unsigned char	*tmp, *ptr;
-
-//	tmp = Image565ToImage888( color_buf, width*height );
-
-	pixelnum = width*height; 
-
-	tmp = (unsigned char *)alloca( pixelnum*3 );
-	__chkptr( tmp );
-
-	ptr = tmp;
-	for ( i = 0; i < pixelnum; i++ )
-	{
-		p16 = *((unsigned short *)(color_buf));
-		color_buf+=2;
-
-		*ptr++ = ((p16>>11)&31)<<3;
-		*ptr++ = ((p16>>5)&63)<<2;
-		*ptr++ = ((p16&31))<<3;
-	}
-
-
-
-#if 1
-
-	if ( flag_mipmap_hint )
-	{
-        Res_CreateGLTEX_rgb_mipmap( 0, width, height, color_buf );
-
-
-
-	}
-	else
-	{
-		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, color_buf );
-	}
-
-#endif
-}
-
-
-void Res_CreateGLTEX_rgb( int width, int height, unsigned char *color_buf )
-{
-
-#if 1
-
-	if ( flag_mipmap_hint )
-	{
-		Res_CreateGLTEX_rgb_mipmap( 0, width, height, color_buf );	
-	}
-	else
-	{
-		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, color_buf );
-	}
-#endif
-}
-
-void Res_CreateGLTEX_rgba( int width, int height, unsigned char *color_buf )
-{
-
-#if 1
-
-	if ( flag_mipmap_hint )
-	{
-		Res_CreateGLTEX_rgba_mipmap( 0, width, height, color_buf );	
-	}
-	else
-	{
-		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, color_buf );
-	}
-#endif
-
-}
-#endif
 
 
 // ==================================================
@@ -777,7 +805,7 @@ void Res_CacheGLTEX( g_resource_t *r )
             break;
         case GL_RGBA:
         case GL_BGRA:
-            gltex->comp = resGltexComponents_rgb;
+            gltex->comp = resGltexComponents_rgba;
             break;
 
         default:
@@ -797,7 +825,7 @@ void Res_CacheGLTEX( g_resource_t *r )
             if( s_loader != nullptr ) {
                 s_loader->add( std::move(j) );
             } else {
-                // HACK: if the loader hash not been started, store the jobs in the deferred list
+                // HACK: if the loader has not been started, store the jobs in the deferred list
                 s_deferred_jobs.push_back(std::move(j));
             }
 
@@ -814,9 +842,6 @@ void Res_CacheGLTEX( g_resource_t *r )
     r->state = G_RESOURCE_STATE_CACHED;
 
 
-
-	GC_GiveBackTime();
-		
 }
 
 void Res_UncacheGLTEX( g_resource_t *res )
@@ -889,13 +914,13 @@ void gltex::cache ( res* r ) {
     }
 #if 0
     if ( strstr( res_gltex->rs_->path, ".tga" ) )
-    {       
+    {
         res_gltex->cs_ = Res_CacheInGLTEX_tga( res_gltex->rs_ );
     }
     else if ( strstr( res_gltex->rs_->path, ".jpg" ) )
     {
         res_gltex->cs_ = Res_CacheInGLTEX_jpg( res_gltex->rs_ );
-    }   
+    }
     else
     {
         __error( "can't recognize image file format of '%s'\n", res_gltex->rs_->path );

@@ -88,7 +88,7 @@ endif()
 
 # set( CMAKE_C_COMPILER g++ )
 include_directories( shared . r_fake r_gen_gl)
-
+INCLUDE_DIRECTORIES( /usr/include/openjpeg-1.5/ )
 
 #add_definitions( -Dlinux_i386 -D__USE_IBASE -DS_INGAME )
 

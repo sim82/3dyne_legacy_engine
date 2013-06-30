@@ -37,6 +37,9 @@
 #include "message_passing.h"
 #include "i_defs.h"
 #include <tuple>
+#include <memory>
+
+class mipmap_cache;
 
 namespace msg {
 class key_event : public base {
@@ -75,7 +78,7 @@ public:
 
 };
 
-
+#if 0
 class gl_upload_texture : public base {
 public:
     gl_upload_texture( GLuint t, GLuint w, GLuint h, GLenum pixel_format, GLint mip_level, GLint max_level, std::vector<uint8_t> && data )
@@ -92,12 +95,35 @@ public:
 
     GLuint t_;
     GLuint w_;
-    GLenum pixel_format_;
     GLuint h_;
+    GLenum pixel_format_;
     GLint mip_level_;
     GLint max_level_;
     std::vector<uint8_t> data_;
 };
+#endif
+
+
+class gl_upload_texture : public base {
+public:
+    gl_upload_texture( GLuint t, std::shared_ptr<mipmap_cache> mc, GLenum pixel_format, GLint mip_level, GLint max_level )
+        : t_(t),
+          mc_(mc),
+          pixel_format_(pixel_format),
+          mip_level_(mip_level),
+          max_level_(max_level)
+    {}
+
+    GLuint t_;
+    std::shared_ptr<mipmap_cache> mc_;
+    GLenum pixel_format_;
+
+    GLint mip_level_;
+    GLint max_level_;
+
+};
+
+
 
 class test_tuple : public base {
 public:

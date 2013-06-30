@@ -124,6 +124,8 @@ std::unique_ptr<T> make_unique( Args&& ...args )
     return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
 }
 
+#if 0
+
 template<typename T>
 class msg_fwd {
 public:
@@ -139,6 +141,7 @@ public:
     }
     
 };
+#endif
 
 template<typename TRet, typename T>
 class msg_ret_fwd {
@@ -171,6 +174,7 @@ class queue {
     };
     
     typedef std::function<void(std::unique_ptr<msg::base>)> handler_type;
+
     typedef std::function<std::unique_ptr<msg::base>(std::unique_ptr<msg::base>)> handler_ret_type;
     
     
@@ -301,7 +305,16 @@ public:
     template<typename T>
     void add_handler( std::function<void(std::unique_ptr<T>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
-        handler_map_.emplace( make_typeinfo_wrapper<T>(), msg_fwd<T>(h) );
+        //handler_map_.emplace( make_typeinfo_wrapper<T>(), msg_fwd<T>(h) );
+
+        handler_map_.emplace( make_typeinfo_wrapper<T>(), [=]( msg::ptr<msg::base> m ) {
+            h( std::unique_ptr<T>( static_cast<T*>(m.release())) );
+        });
+
+
+
+        //handler_map_.insert( std::pair<typeinfo_wrapper,handler_type>(make_typeinfo_wrapper<T>(), h ));
+
         add_profiling_entry<T>();
         add_typename_mapping<T>();
     }
@@ -310,7 +323,12 @@ public:
     template<typename T>
     void add_handler_ret( std::function<std::unique_ptr<typename T::return_type>(std::unique_ptr<T>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
-        handler_ret_map_.emplace( make_typeinfo_wrapper<T>(), msg_ret_fwd<typename T::return_type, T>(h) );
+        //handler_ret_map_.emplace( make_typeinfo_wrapper<T>(), msg_ret_fwd<typename T::return_type, T>(h) );
+
+        handler_ret_map_.emplace( make_typeinfo_wrapper<T>(), [=]( msg::ptr<msg::base> m ) {
+            return h( std::unique_ptr<T>( static_cast<T*>(m.release())) );
+        });
+
         add_profiling_entry<T>();
         add_typename_mapping<T>();
         
@@ -321,7 +339,10 @@ public:
     void add_token_handler( size_t token, std::function<void(std::unique_ptr<typename T::return_type>)> h ) {
         std::lock_guard<std::mutex> lock( central_mtx_ );
 //         std::cout << "add token handler: " << token << "\n";
-        token_handler_map_.emplace( token, msg_fwd<typename T::return_type>(h) );  
+        //token_handler_map_.emplace( token, msg_fwd<typename T::return_type>(h) );
+        token_handler_map_.emplace( token, [=]( msg::ptr<msg::base> m ) {
+            h( std::unique_ptr<T>( static_cast<T*>(m.release())) );
+        });
     }
     
     void stop();

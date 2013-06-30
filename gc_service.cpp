@@ -64,6 +64,7 @@
 #include "snd_deamon.h"
 #include "sh_input.h"
 #include "pan.h"
+#include "res_gltex.h"
 
 #if D3DYNE_OS_UNIXLIKE
 #include <stdio.h>                                                              
@@ -1583,9 +1584,10 @@ public:
             __error( "unknown pixel format\n");
         }
 
-
+        auto size = m->mc_->size();
+        auto data = m->mc_->data();
         //std::cout << "upload: " << m->t_ << " " << m->mip_level_ << " " << m->max_level_  << " "  << m->w_ << " " << m->h_ << "\n";
-        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, internal_format, m->w_, m->h_, 0, m->pixel_format_, GL_UNSIGNED_BYTE, m->data_.data() ); check_gl_error;
+        glTexImage2D( GL_TEXTURE_2D, m->mip_level_, internal_format, size.first, size.second, 0, m->pixel_format_, GL_UNSIGNED_BYTE, data.first ); check_gl_error;
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         if( m->mip_level_ == 0 ) {
@@ -1604,7 +1606,6 @@ public:
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m->max_level_ ); check_gl_error;
 
     }
-
 private:
     pan::gl_context &gl_ctx_;
     mp::queue q;

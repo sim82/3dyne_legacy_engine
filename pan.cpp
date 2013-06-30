@@ -333,11 +333,12 @@ void gl_context::set_config(const gl_context::config& cfg) {
 //        mode_setter_.reset( new xrandr_mode_setter(display_, root, cfg.width_, cfg.height_) );
         
         XSetWindowAttributes attr;
+        memset( &attr, 0, sizeof( XSetWindowAttributes ));
         attr.background_pixel = 0;
         attr.border_pixel = 0;
         attr.colormap = XCreateColormap( display_, root, visinfo->visual, AllocNone );
         attr.event_mask =  StructureNotifyMask | ExposureMask | KeyPressMask | FocusChangeMask;
-        
+
         unsigned long mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
         
         if( cfg.fullscreen_ ) {
@@ -418,8 +419,16 @@ void gl_context::set_config(const gl_context::config& cfg) {
 
         XMapWindow( display_, window_ );
 
+
         if( cfg.fullscreen_ ) {
             
+        } else {
+            XSizeHints size_hints;
+            size_hints.width = size_hints.min_width = size_hints.max_width = cfg.width_;
+            size_hints.height = size_hints.min_height = size_hints.max_height = cfg.height_;
+            size_hints.flags = PSize | PMinSize | PMaxSize;
+
+            XSetWMNormalHints( display_, window_, &size_hints );
         }
         
         have_xinput_ = true;

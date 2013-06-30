@@ -72,4 +72,12 @@ private:
     std::unique_ptr<gltex_loader_impl> impl_;
 };
 
+
+class mipmap_cache {
+public:
+    virtual ~mipmap_cache() {/*std::cout << "~mipmap_cache\n";*/}
+    virtual std::pair<size_t,size_t> size() = 0;
+    virtual std::pair<const uint8_t *,const uint8_t *> data() = 0;
+};
+
 #endif
