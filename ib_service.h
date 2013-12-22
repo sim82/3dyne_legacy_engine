@@ -42,12 +42,13 @@
 #include <memory>
 #include <fstream>
 
-#include "ib_defs.h"
-#include "shock.h"
 
+#include "Shared/shock.h"
+#include "Ortho/ibase.h"
+#include "ib_defs.h"
 
 //#include "defs.h"
-
+#if 0
 extern int	ib_lastaction;
 extern int	sc_readbytes;
 
@@ -177,7 +178,7 @@ private:
     bool is_mapped_;
 };
 }
-
+#endif
 
 void IB_StartUp();
 void IB_ShutDown();

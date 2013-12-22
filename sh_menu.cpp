@@ -476,7 +476,7 @@ void WUpdate_shcom_tga( hobj_t *class_, keyevent_t *e )
 
 	SND_AddJob( snd_enter, SND_TYPE_LOCAL, 1, snd_vec );
 	// disble keyevent
-	e->sym = (gs_ksym)0;
+    e->sym = (i_ksym_t)0;
 }
 
 
@@ -505,7 +505,7 @@ void WUpdate_shcom_text( hobj_t *class_, keyevent_t *e )
 	__named_message( "%s\n", com );
 	SHP_ParseBuf( com );
 
-	e->sym = (gs_ksym)0;
+    e->sym = (i_ksym_t)0;
 }
 
 // ====================
@@ -544,7 +544,7 @@ void WUpdate_yesno( hobj_t *class_, keyevent_t *e )
 		SHP_SetVar( varname, "1", 0 );
 
 	// disble keyevent
-	e->sym = (gs_ksym)0;
+    e->sym = (i_ksym_t)0;
 }
 
 // ====================
@@ -596,7 +596,7 @@ void WUpdate_lineedit( hobj_t *class_, keyevent_t *e )
 	SHP_SetVar( varname, text, 0 );
 
 	// disable keysym
-	e->sym = (gs_ksym)0;
+    e->sym = (i_ksym_t)0;
 }
 		
 void WUpdate_slider( hobj_t *class_, keyevent_t *e )
@@ -651,7 +651,7 @@ void WUpdate_slider( hobj_t *class_, keyevent_t *e )
 
 	SHP_SetVar( varname, tmp, 0 );
 
-	e->sym = (gs_ksym)0;
+    e->sym = (i_ksym_t)0;
 }
 
 // ====================
@@ -744,7 +744,7 @@ static shm_funcmap_t	funcmap[] = {
 
 void SHM_StartUp()
 {
-	tokenstream_t	*ts;
+    legacy::tokenstream_t	*ts;
 
 	ts = BeginTokenStream( "menu/menu.hobj" );
 	__chkptr( ts );
@@ -1003,7 +1003,7 @@ void SHM_Update( keyevent_t *_list)
     bool used = SHM_Update( *validevent );
     
     if( used ) {
-        validevent->sym = gs_ksym(0);
+        validevent->sym = i_ksym_t(0);
         
     }
     
@@ -1076,7 +1076,7 @@ bool SHM_Update( keyevent_t event ) {
 
 		default:
 			SHM_UpdatePage( page, validevent, active );
-            used = (validevent->sym == gs_ksym(0)); // total crap!
+            used = (validevent->sym == i_ksym_t(0)); // total crap!
             break;
 		}
 		sprintf( text, "%d", active );

@@ -38,7 +38,7 @@
 
 #include "lib_parse.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 /*
   ==============================

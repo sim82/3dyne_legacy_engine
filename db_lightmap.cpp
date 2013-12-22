@@ -55,7 +55,7 @@
 
 #include "db_lightmap.h"
 #include "interfaces.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 static bool_t	db_internal_init = false;
 
@@ -157,7 +157,7 @@ lightmap_db_cpp::lightmap_db_cpp( const char* lightmap_bin_name, const char* lig
     hobj_search_iterator_t  iter;
     hobj_t          *lightmap;
     hobj_t          *lightsource;
-    tokenstream_t   *ts;
+    legacy::tokenstream_t   *ts;
 
     u_list_iter_t       lsrc_iter;
 

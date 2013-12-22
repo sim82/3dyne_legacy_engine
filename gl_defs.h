@@ -37,7 +37,7 @@
 #ifndef gl_defs_h
 #define gl_defs_h
 
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 typedef struct {
 	char	*extstring;	// complete extension string
@@ -52,6 +52,6 @@ typedef struct {
 #endif
 
 #define GL_GLEXT_PROTOTYPES 1
-#include <GL/gl.h>
+#include <Ortho/OpenGL.h>
 
 #endif

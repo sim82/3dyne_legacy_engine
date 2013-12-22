@@ -40,13 +40,13 @@
 #define		MAX_TOKEN_LEN	( 255 )
 #define		TOKEN_FAIL	( 0 )
 #define		TOKEN_OK	( 1 )
-
+namespace legacy {
 typedef struct {
 	ib_file_t		*handle;
 	int		keep;	// if set GetToken does nothing
 	char		token[MAX_TOKEN_LEN];	
 } tokenstream_t;
 
-
+}
 
 #endif

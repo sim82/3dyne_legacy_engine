@@ -35,7 +35,7 @@
 // g_library.c
 // shared lib handling
 
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 #include "interfaces.h"
 #include "g_api.h"

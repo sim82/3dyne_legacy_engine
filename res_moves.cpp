@@ -60,7 +60,7 @@ res_moves_cache_t * Res_CacheInMOVES( res_moves_register_t *reg )
 	hobj_t			*root;
 	hpair_t			*pair;
 	
-	tokenstream_t		*ts;       
+    legacy::tokenstream_t		*ts;
 	ib_file_t		*h;
 	int			filesize;
 

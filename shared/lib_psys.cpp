@@ -41,7 +41,7 @@
 #include "s_config.h"
 #include "s_mem.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "lib_math.h"
 #include "lib_pack.h"

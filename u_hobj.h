@@ -49,8 +49,8 @@
 void WriteClass( hobj_t *self, FILE * );
 void WriteClassWithoutRoot( hobj_t *self, FILE * );
 
-hobj_t* ReadClass( tokenstream_t *ts );
-hobj_t* ReadClassRecursive( tokenstream_t *ts );
+hobj_t* ReadClass( legacy::tokenstream_t *ts );
+hobj_t* ReadClassRecursive( legacy::tokenstream_t *ts );
 
 
 #endif

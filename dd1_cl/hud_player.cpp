@@ -38,7 +38,7 @@
 #include "cl_head.h"
 
 #include "s_mem.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "hud_player.h"
 

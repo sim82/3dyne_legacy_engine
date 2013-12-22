@@ -1,6 +1,6 @@
 #include <atomic>
 #include "g_message_passing.h"
-#include "shared/shock.h"
+#include "Shared/shock.h"
 
 //std::atomic<g_global_mp*> g_mp;
 

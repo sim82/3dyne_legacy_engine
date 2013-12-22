@@ -37,7 +37,7 @@
 #include "u_mempack.h"
 #include "g_shared.h"
 #include "ca_service.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #define	MEMPACK_TMP_BUFFER	( 1024 )
 

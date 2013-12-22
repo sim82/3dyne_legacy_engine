@@ -250,7 +250,7 @@ void SetupNodeLeafbits( void )
 */
 hmanager_t * ReadPlaneClass( char *name )
 {
-	tokenstream_t	*ts;
+    legacy::tokenstream_t	*ts;
 	hobj_t		*planecls;
 	hmanager_t	*hm;
 	hobj_search_iterator_t	iter;

@@ -131,7 +131,7 @@ vsc_model_t* VSC_LoadModel( char *file )
 	int		num;
 	vsc_model_t	*m;
 	vsc_face_t	*f;
-	tokenstream_t	*ts;
+    legacy::tokenstream_t	*ts;
 
 	ts = BeginTokenStream( file );
 	if ( !ts )

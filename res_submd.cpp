@@ -44,7 +44,7 @@
 
 res_submd_cache_t * Res_CacheInSUBMD( res_submd_register_t *reg )
 {
-	tokenstream_t		*ts;
+    legacy::tokenstream_t		*ts;
 	int	i, num, bytes;
     size_t size;
 	int	vertexnum;

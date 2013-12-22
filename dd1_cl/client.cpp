@@ -33,7 +33,7 @@
 
 
 // client.c
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -41,7 +41,7 @@
 #include "client.h"
 #include "cl_main.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 
 #if D3DYNE_OS_WIN

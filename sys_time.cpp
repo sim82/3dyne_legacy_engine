@@ -35,7 +35,7 @@
 // sys_time.c
 
 // support.c
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 
 #if D3DYNE_OS_UNIXLIKE

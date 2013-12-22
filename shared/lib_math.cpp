@@ -33,7 +33,7 @@
 
 
 // lib_math.h
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 #include <stdio.h>
 #include <math.h>

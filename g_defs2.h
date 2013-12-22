@@ -36,7 +36,7 @@
 
 #ifndef __g_defs2
 #define __g_defs2
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 #include "lib_containerdefs.h"
 #include "lib_queuedefs.h"

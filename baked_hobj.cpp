@@ -1,4 +1,4 @@
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 #if !D3DYNE_OS_WIN
 
 #include <iostream>
@@ -8,11 +8,11 @@
 #include <stdexcept>
 #include <cstring>
 #include <set>
-#include "shock.h"
+#include "Shared/shock.h"
 #include "rel_ptr.h"
 #include "u_hobj.h"
 #include "interfaces.h"
-#include "minimal_external_hash.h"
+#include "Ortho/minimal_external_hash.h"
 
 class inc_alloc;
 

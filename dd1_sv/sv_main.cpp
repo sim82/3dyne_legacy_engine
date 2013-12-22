@@ -44,7 +44,7 @@
 #include "lib_hobj.h"
 #include "lib_container.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 hobj_t		*sv_at_root;
 

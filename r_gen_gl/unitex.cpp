@@ -39,7 +39,7 @@
 #include <math.h>
 
 #include "lib_math.h"
-#include "shock.h"
+#include "Shared/shock.h"
 #include "g_shared.h"
 #include "ca_service.h"
 

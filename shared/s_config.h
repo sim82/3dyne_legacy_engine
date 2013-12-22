@@ -71,7 +71,7 @@
 // ==============================
 
 #include "l_locals.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #define S_Malloc	li.MM_Malloc
 #define S_Free		li.MM_Free
@@ -83,7 +83,7 @@
 // ==============================
 
 #include "server.h"
-//#include "shock.h"
+//#include "Shared/shock.h"
 //#include "lib_math.h"
 
 #define cprintf	g_api.Printf
@@ -106,7 +106,7 @@
 // ==============================
 
 #include "client.h"
-//#include "shock.h"
+//#include "Shared/shock.h"
 //#include "lib_math.h"
 
 #define cprintf	g_api.Printf
@@ -128,7 +128,7 @@
 // in sound subsystem
 
 #include "sst_locals.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #define S_Malloc	si.MM_Malloc
 #define S_Free		si.MM_Free

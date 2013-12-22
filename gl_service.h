@@ -37,7 +37,7 @@
 
 #ifndef gl_service_h
 #define gl_service_h
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 #include "gl_defs.h"
 
@@ -48,6 +48,6 @@ void GL_GetInfo( gl_info_t *info );
 #endif
 
 #define GL_GLEXT_PROTOTYPES 1
-#include <GL/gl.h>
+#include <Ortho/OpenGL.h>
 
 #endif

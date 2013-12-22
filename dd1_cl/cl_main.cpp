@@ -43,7 +43,7 @@
 #include "lib_container.h"
 #include "events.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 hobj_t		*cl_at_root;
 

@@ -38,7 +38,7 @@
 #define __res_gltex
 #include "g_resources.h"
 #include "g_resourcesdefs.h"
-#include "message_passing.h"
+#include "Ortho/message_passing.h"
 g_resource_t * Res_RegisterGLTEX( hobj_t *resobj );
 void Res_UnregisterGLTEX( g_resource_t *r );
 void Res_CacheGLTEX( g_resource_t *r );

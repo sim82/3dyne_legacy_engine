@@ -38,7 +38,7 @@
 
 #ifndef __interfaces
 #define __interfaces
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 #include "s_config.h"
 #include "s_mem.h"
@@ -61,7 +61,7 @@
 #include "sh_parser.h"
 #include "sh_visual.h"
 #include "sh_menu.h"
-#include "shock.h"
+#include "Shared/shock.h"
 #include "snd_deamon.h"
 #include "snd_intern.h"
 

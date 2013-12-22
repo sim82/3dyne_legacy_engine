@@ -97,7 +97,7 @@ void G_FreeState( g_state_t *st )
 hmanager_t * G_MapTryClassLoad( const char *path, const char *name )
 {
 	hmanager_t	*hm;
-	tokenstream_t	*ts;
+    legacy::tokenstream_t	*ts;
 	hobj_t		*root;
 	char		tt[256];
 
@@ -313,7 +313,7 @@ void G_InitMap( g_map_t *map )
 	char		lightsource_class[256];
 	char		tt[256];
 	char		path[256];
-	tokenstream_t	*ts;
+    legacy::tokenstream_t	*ts;
 
 	sh_var_t		*tmp;
 

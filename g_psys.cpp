@@ -33,13 +33,13 @@
 
 
 // g_psys.c
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
 #include "lib_math.h"
-#include "shock.h"
+#include "Shared/shock.h"
 #include "ca_service.h"
 #include "g_shared.h"
 

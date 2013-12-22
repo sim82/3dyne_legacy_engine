@@ -41,10 +41,10 @@
 
 //extern	char token[];
 
-tokenstream_t* BeginTokenStream( const char *name );
-int	SkipLine( tokenstream_t *stream );
-int	GetToken( tokenstream_t *stream );
-void	KeepToken( tokenstream_t *stream );
-void	EndTokenStream( tokenstream_t *stream );
+legacy::tokenstream_t* BeginTokenStream( const char *name );
+int	SkipLine( legacy::tokenstream_t *stream );
+int	GetToken( legacy::tokenstream_t *stream );
+void	KeepToken( legacy::tokenstream_t *stream );
+void	EndTokenStream( legacy::tokenstream_t *stream );
 
 #endif

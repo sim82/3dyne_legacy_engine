@@ -38,7 +38,7 @@
 #include "interfaces.h"
 #include "defs.h"
 #include "g_shared.h"
-#include "message_passing.h"
+#include "Ortho/message_passing.h"
 #include "g_message_passing.h"
 const void * GetKey_resource( const void *obj )
 {
@@ -307,7 +307,7 @@ void G_ResourceFromResObj( g_resources_t *res, hobj_t *cls )
 */
 void G_ResourceFromClass( g_resources_t *res, const char *name )
 {
-	tokenstream_t	*ts;
+    legacy::tokenstream_t	*ts;
 	hobj_t		*root;
 	hobj_t		*resobj;
 	hobj_search_iterator_t	iter;
@@ -742,7 +742,7 @@ void manager::init_from_res_obj ( hobj_t* hobj )
 void manager::init_from_res_file ( const char* name )
 {
     std::lock_guard<std::mutex> lock(mtx_);
-    tokenstream_t   *ts;
+    legacy::tokenstream_t   *ts;
     hobj_t      *root;
     hobj_t      *resobj;
     hobj_search_iterator_t  iter;

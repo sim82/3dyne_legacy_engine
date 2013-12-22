@@ -41,7 +41,7 @@
 #include <string.h>
 
 #include "sys_endian.h"
-#include "shock.h"
+#include "Shared/shock.h"
 #include "lib_pack.h"
 
 static int  cur_maxsize;

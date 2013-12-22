@@ -38,7 +38,7 @@
 #include "cl_head.h"
 #include "cl_defs.h"
 #include "lib_math.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 void CL_CreateGfxFromEvent( byte_iter_t *bi )
 {

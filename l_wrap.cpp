@@ -66,7 +66,7 @@ void GI_ResourceDetach( char *name, char *user_name )
 hobj_t * GI_ReadClass( char *path )
 {
 	hobj_t		*root;
-	tokenstream_t	*ts;
+    legacy::tokenstream_t	*ts;
 
 	ts = BeginTokenStream( path );
 	if ( !ts )

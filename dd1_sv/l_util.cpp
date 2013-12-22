@@ -42,7 +42,7 @@
 #include "sv_state.h"
 
 #include "lib_container.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 
 /*

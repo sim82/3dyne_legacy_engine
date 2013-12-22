@@ -33,7 +33,7 @@
 
 
 // sys_dll.c
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 #define	SYS_DLL_MAXOPEN	( 8 )
 
 // test

@@ -46,7 +46,7 @@
 #include "r_fake/r_math.h"
 #include "g_shared.h"		// for macros
 #include "ca_service.h"		// for malloc
-#include "shock.h"		// for errors
+#include "Shared/shock.h"		// for errors
 
 #include "r_private.h"		// for opengl
 #include "u_pixel.h"		// for pixel format convert

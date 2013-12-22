@@ -41,7 +41,7 @@
 #include "s_config.h"
 #include "s_mem.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 #define printf  S_Printf                                                        
 #define Error   __error

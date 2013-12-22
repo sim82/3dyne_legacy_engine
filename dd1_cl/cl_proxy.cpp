@@ -38,7 +38,7 @@
 #include "cl_head.h"
 
 #include "lib_math.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #define CL_PROXY_KILLBOX_MAX	( 128 )
 

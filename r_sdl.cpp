@@ -292,7 +292,7 @@ void I_Update()
 		}
 	}
 
-	keventlist[0].sym = ( gs_ksym ) keventlistptr; // first element in list is listsize!
+	keventlist[0].sym = ( i_ksym_t ) keventlistptr; // first element in list is listsize!
 #endif
 }
 
@@ -507,7 +507,7 @@ abs_end:
 		gsksym = shiftmap[gsksym];
 	}
 
-	keventlist[keventlistptr].sym = ( gs_ksym ) gsksym;
+	keventlist[keventlistptr].sym = ( i_ksym_t ) gsksym;
 	keventlist[keventlistptr].type = type;
 	g_global_mp::get_instance()->get_queue().emplace<msg::key_event>( keventlist[keventlistptr] );
     
@@ -567,7 +567,7 @@ void I_SDLDoMouseButton ( SDL_Event event )
 		break;
 	}
 
-	keventlist[keventlistptr].sym = ( gs_ksym ) gsksym;
+	keventlist[keventlistptr].sym = ( i_ksym_t ) gsksym;
 	keventlist[keventlistptr].type = type;
 	g_global_mp::get_instance()->get_queue().emplace<msg::key_event>( keventlist[keventlistptr] );
     

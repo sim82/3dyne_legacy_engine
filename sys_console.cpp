@@ -34,7 +34,7 @@
 
 // sys_console
 
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 #include <interfaces.h>
 
 #include <sys_console.h>

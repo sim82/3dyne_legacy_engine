@@ -38,7 +38,7 @@
 
 #ifndef sh_defs_h
 #define sh_defs_h
-
+#include "System/i_defs.h"
 
 // sh_deamon.c
 
@@ -57,6 +57,7 @@
 
 #define	LA_HUD_GR_NUM	( 16 )
 
+typedef i_feedback_t keyevent_t;
 
 // special chars in the font
 enum {
@@ -95,7 +96,7 @@ typedef struct {
 } sh_command_t;
 
 // bad situation: function definition inside a defs file
-#include "i_defs.h"
+#include "System/i_defs.h"
 
 
 typedef struct sh_widget_s {

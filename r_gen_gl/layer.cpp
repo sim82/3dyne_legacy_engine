@@ -40,7 +40,7 @@
 
 #include "lib_math.h"
 #include "lib_bezier.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "mesh.h"
 #include "layer.h"
@@ -85,7 +85,7 @@ void Layer_CreateTexCoord_projection( layer_t *layer, vec3d_t in, vec2d_t out )
 	U_BeginMemUnpack( layer->packed_info );		// fixme: missing U_EndMemUnpack() ...
 	U_MemUnpacki32( &trans_num );
 	
-        assert( trans_num > 0 );
+        __chk( trans_num > 0 );
         
 	for ( j = 0; j < trans_num; j++ )
 	{

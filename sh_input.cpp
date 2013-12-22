@@ -176,7 +176,7 @@ void SHI_Update( keyevent_t *_list )
 			continue;
 
 		SHI_FireKsym( list[i] );
-		list[i].sym = (gs_ksym)0; // mark
+        list[i].sym = (i_ksym_t)0; // mark
 	}
 }
 
@@ -196,7 +196,7 @@ void SHI_SensibleUpdate( keyevent_t *_list )
 	{
 		if( list[i].sym && ( list[i].type == SYMTYPE_PRESS ))
 		{
-			list[i].sym = (gs_ksym)0;
+            list[i].sym = (i_ksym_t)0;
 			SHM_SetCurPage( "main" );
 			break;
 			

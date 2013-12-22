@@ -1,18 +1,15 @@
 #include <thread>
-#include "pan.h"
+#include "Ortho/pan.h"
 
 
 #define vgl_notextern
-#include "shared/log.h"
+#include "Shared/log.h"
 
 #include "interfaces.h"
 #include "r_private.h"
 #include "r_interface.h"
 #include "g_message_passing.h"
 
-#define GL_GLEXT_PROTOTYPES 1
-#include "GL/gl.h"
-#include "GL/glext.h"
 
 sh_var_t *r_devicewidth, *r_deviceheight;
 

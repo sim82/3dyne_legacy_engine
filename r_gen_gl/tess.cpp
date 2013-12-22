@@ -34,7 +34,7 @@
 
 // tess.c
 
-#include "shock.h"
+#include "Shared/shock.h"
 #include "tess.h"
 
 /*

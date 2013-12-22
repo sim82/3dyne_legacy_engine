@@ -37,7 +37,7 @@
 #include "lib_queue.h"
 #include "s_mem.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 /*
   ==================================================

@@ -104,13 +104,13 @@ void SHV_Update( keyevent_t *_list )
 		} else if( isprint( list[i].sym )  )
 		{
 			c = list[i].sym;
-			list[i].sym = (gs_ksym)0;
+			list[i].sym = (i_ksym_t)0;
 			SHV_AppendChar( c );
 			continue;
 		} else if( ( list[i].sym == '\n' ) || ( list[i].sym == '\b' ) ||( list[i].sym == ' ' ) || ( list[i].sym == '\t' ))
 		{
 			c = list[i].sym;
-			list[i].sym = (gs_ksym)0;
+			list[i].sym = (i_ksym_t)0;
 			if( c == '\n' )
 			{
 				strncpy( hist, inputline, 255 );
@@ -128,7 +128,7 @@ void SHV_Update( keyevent_t *_list )
 		} else if( list[i].sym == '-' ) // i'm sorry but...
 		{
 			c = '_';
-			list[i].sym = (gs_ksym)0;
+			list[i].sym = (i_ksym_t)0;
 			SHV_AppendChar( c );
 			continue;
 		} else if( list[i].sym == GSK_CUP )

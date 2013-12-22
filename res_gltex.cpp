@@ -50,9 +50,9 @@
 
 #include "res_gltex.h"
 #include "res_gltexdefs.h"
-#include "shared/log.h"
+#include "Shared/log.h"
 #include "g_message_passing.h"
-#include "message_passing.h"
+#include "Ortho/message_passing.h"
 //#define HAVE_BOOLEAN
 
 
@@ -963,7 +963,7 @@ void stop_gltex_loader() {
 #endif
 
 gltex_background_loader::gltex_background_loader(mp::queue &q)
-    : impl_( mp::make_unique<gltex_loader_impl>(q) )
+    : impl_( std::make_unique<gltex_loader_impl>(q) )
 {
     // HACK: make the loader kind of a singleton internally
     assert( s_loader == nullptr );

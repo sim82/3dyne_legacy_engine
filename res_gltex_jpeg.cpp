@@ -45,8 +45,8 @@
 #include "res_gltex.h"
 #include "res_gltexdefs.h"
 //#include "s_mem.h"
-#include "shock.h"
-#include "message_passing.h"
+#include "Shared/shock.h"
+#include "Ortho/message_passing.h"
 
 void *_MM_Malloc( int );
 void _MM_Free( void * );

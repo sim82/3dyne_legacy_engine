@@ -40,7 +40,7 @@
 #include "lib_math.h"
 #include "u_pixel.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 /*
   ==============================

@@ -46,12 +46,12 @@
 //char		token[MAX_TOKEN_LEN];
 
 
-tokenstream_t* BeginTokenStream( const char * name )
+legacy::tokenstream_t* BeginTokenStream( const char * name )
 {
-	tokenstream_t	*s;
+    legacy::tokenstream_t	*s;
 
-	s = (tokenstream_t *) MM_Malloc( sizeof( tokenstream_t ) );
-	memset( s, 0, sizeof( tokenstream_t ) );
+    s = (legacy::tokenstream_t *) MM_Malloc( sizeof( legacy::tokenstream_t ) );
+    memset( s, 0, sizeof( legacy::tokenstream_t ) );
 
 	s->handle = IB_Open( name );
 
@@ -69,13 +69,13 @@ tokenstream_t* BeginTokenStream( const char * name )
 	return s;
 }
 
-void EndTokenStream( tokenstream_t *stream )
+void EndTokenStream( legacy::tokenstream_t *stream )
 {
 	IB_Close ( stream->handle );
 	MM_Free( stream );
 }
 
-int SkipLine( tokenstream_t *stream )
+int SkipLine( legacy::tokenstream_t *stream )
 {
 	int		i;
 	unsigned char		c;
@@ -98,7 +98,7 @@ int SkipLine( tokenstream_t *stream )
 	}
 }
 
-int GetToken( tokenstream_t *stream ) {
+int GetToken( legacy::tokenstream_t *stream ) {
 
 	unsigned char	c;
 	int		pos;
@@ -224,7 +224,7 @@ int GetToken( tokenstream_t *stream ) {
 	return TOKEN_OK;
 }
 
-void KeepToken( tokenstream_t *stream )
+void KeepToken( legacy::tokenstream_t *stream )
 {
 	stream->keep = 1;
 }

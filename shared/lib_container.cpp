@@ -36,7 +36,7 @@
 
 #include "lib_container.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 #define printf  S_Printf                                                        
 #define Error   __error

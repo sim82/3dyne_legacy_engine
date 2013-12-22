@@ -35,10 +35,10 @@
 // gc_service.c
 #include <functional>
 #include <algorithm>
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 #include "game_shell.h"
 #include "g_message_passing.h"
-#include "shared/log.h"
+#include "Shared/log.h"
 
 #if D3DYNE_OS_WIN
   typedef int socklen_t;
@@ -63,7 +63,7 @@
 #include "g_library.h"
 #include "snd_deamon.h"
 #include "sh_input.h"
-#include "pan.h"
+#include "Ortho/pan.h"
 #include "res_gltex.h"
 
 #if D3DYNE_OS_UNIXLIKE
@@ -78,6 +78,7 @@
 
 #endif 
 
+#include "Shared/dep_inject.h"
 #include "gl_bits.h"
 #include "sh_alias.h"
 //#include <sys/time.h>                                                           
@@ -1261,13 +1262,13 @@ void GC_AccumulateViewAngles();
 
 class gc_mainloop {
 public:
-    gc_mainloop( pan::gl_context &gl_ctx )
-        : gl_ctx_(gl_ctx),
-          q("main"),
+    gc_mainloop( /*pan::gl_context &gl_ctx*/ )
+        : gl_ctx_(*dep_inject::get_registry().get<pan::gl_context>("g_gl_context")),
+          q(*dep_inject::get_registry().get<mp::queue>("g_engine_queue")),
           gltex_bgl( q ),
-          ip( q ),
-          oldest_mouse_event(size_t(-1)),
-          newest_mouse_event(0)
+          ip( q )
+//          oldest_mouse_event(size_t(-1)),
+//          newest_mouse_event(0)
     {
         ALIAS_SetQueue( q );
 
@@ -1284,13 +1285,67 @@ public:
         }
     #endif
 
-        q.add_default_stop_handler();
+        //q.add_default_stop_handler();
 
-        q.add_handler<msg::client_frame>( std::bind( &gc_mainloop::on_client_frame, this, std::placeholders::_1 ));
-        q.add_handler<msg::world_frame>( std::bind( &gc_mainloop::on_world_frame, this, std::placeholders::_1 ));
-        q.add_handler<msg::key_event>( std::bind( &gc_mainloop::on_key_event, this, std::placeholders::_1 ));
-        q.add_handler<msg::mouse_event>( std::bind( &gc_mainloop::on_mouse_event, this, std::placeholders::_1 ));
+        q.add_handler<msg::legacy_client_frame>( std::bind( &gc_mainloop::on_client_frame, this, std::placeholders::_1 ));
+        q.add_handler<msg::legacy_world_frame>( std::bind( &gc_mainloop::on_world_frame, this, std::placeholders::_1 ));
+        q.add_handler<msg::legacy_key_event>( std::bind( &gc_mainloop::on_legacy_key_event, this, std::placeholders::_1 ));
+        q.add_handler<msg::legacy_mouse_event>( std::bind( &gc_mainloop::on_mouse_event, this, std::placeholders::_1 ));
         q.add_handler<msg::gl_upload_texture>( std::bind( &gc_mainloop::on_gl_upload_texture, this, std::placeholders::_1 ));
+
+        q.add_handler<msg::menu_setpage> ( [&]( msg::ptr<msg::menu_setpage> m ) {
+            gs::variant &var = ip.env_get("menu_page");
+            auto name = var.get();
+            SHM_SetCurPage( name.c_str() );
+        });
+
+        q.add_handler<msg::game_shell_execute> ( [&]( msg::ptr<msg::game_shell_execute> m ) {
+            ip.exec( m->script_.c_str() );
+        });
+
+        q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
+            if ( h_sendudp )
+            {
+                fclose( h_sendudp );
+            }
+            if ( h_recvudp )
+            {
+                fclose( h_recvudp );
+            }
+            // request queue stop
+            q.emplace<msg::stop>();
+            //Exit();
+
+        });
+
+
+        q.add_handler<msg::gc_start_demo>( [&] (msg::ptr<msg::gc_start_demo> m ) {
+
+            DD_LOG << "lock2\n";
+            GC_CleanUp( gc_state );
+            GC_InitDemo( gc_state );
+            GC_InitGame( gc_state );
+            DD_LOG << "unlock2\n";
+        } );
+
+        q.add_handler<msg::gc_start_single>( [&] (msg::ptr<msg::gc_start_single> m ) {
+            res_scope.reset();
+            res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
+            gc_state->u_start_single = false;
+            GC_CleanUp( gc_state );
+            GC_InitSingle( gc_state );
+            GC_InitGame( gc_state );
+        } );
+
+        q.add_handler<msg::gc_drop_game>( [&] (msg::ptr<msg::gc_drop_game> m ) {
+            gc_state->u_drop_game = false;
+            GC_CleanUp( gc_state );
+
+            //
+            // restart demo
+            //
+            gc_state->u_start_demo = true;
+        } );
     }
 
     void legacy_init() {
@@ -1360,59 +1415,7 @@ public:
     void operator()() {
 
 
-        q.add_handler<msg::menu_setpage> ( [&]( msg::ptr<msg::menu_setpage> m ) {
-            gs::variant &var = ip.env_get("menu_page");
-            auto name = var.get();
-            SHM_SetCurPage( name.c_str() );
-        });
 
-        q.add_handler<msg::game_shell_execute> ( [&]( msg::ptr<msg::game_shell_execute> m ) {
-            ip.exec( m->script_.c_str() );
-        });
-
-        q.add_handler<msg::gc_quit>( [&] (msg::ptr<msg::gc_quit> m ) {
-            if ( h_sendudp )
-            {
-                fclose( h_sendudp );
-            }
-            if ( h_recvudp )
-            {
-                fclose( h_recvudp );
-            }
-            // request queue stop
-            q.emplace<msg::stop>();
-            //Exit();
-
-        });
-
-
-        q.add_handler<msg::gc_start_demo>( [&] (msg::ptr<msg::gc_start_demo> m ) {
-
-            DD_LOG << "lock2\n";
-            GC_CleanUp( gc_state );
-            GC_InitDemo( gc_state );
-            GC_InitGame( gc_state );
-            DD_LOG << "unlock2\n";
-        } );
-
-        q.add_handler<msg::gc_start_single>( [&] (msg::ptr<msg::gc_start_single> m ) {
-            res_scope.reset();
-            res_scope.reset( new g_res::manager::scope_guard( &g_res::manager::get_instance() ));
-            gc_state->u_start_single = false;
-            GC_CleanUp( gc_state );
-            GC_InitSingle( gc_state );
-            GC_InitGame( gc_state );
-        } );
-
-        q.add_handler<msg::gc_drop_game>( [&] (msg::ptr<msg::gc_drop_game> m ) {
-            gc_state->u_drop_game = false;
-            GC_CleanUp( gc_state );
-
-            //
-            // restart demo
-            //
-            gc_state->u_start_demo = true;
-        } );
 
         ms_wfbegin = SYS_GetMsec();
 
@@ -1423,13 +1426,13 @@ public:
         std::deque<std::chrono::high_resolution_clock::duration> duration_avg;
 
 
-        q.add_handler<msg::swap_buffer>( [&] (std::unique_ptr<msg::swap_buffer> m ) {
+        q.add_handler<msg::legacy_swap_buffer>( [&] (std::unique_ptr<msg::legacy_swap_buffer> m ) {
          //   R_SwapBuffer();
             //usleep(1000000);
             //I_Update();
             gl_ctx_.swap_buffers();
             gl_ctx_.dispatch_input( q );
-            q.emplace<msg::client_frame>();
+            q.emplace<msg::legacy_client_frame>();
         });
 
 
@@ -1441,11 +1444,11 @@ public:
 
         q.emplace<msg::gc_start_demo>();
 
-        q.emplace<msg::client_frame>();
+        q.emplace<msg::legacy_client_frame>();
 
         mp::timer_source timer;
 
-        timer.add_timer<msg::world_frame>( &q, std::chrono::milliseconds(100), true );
+        timer.add_timer<msg::legacy_world_frame>( &q, std::chrono::milliseconds(100), true );
         timer.add_timer<msg::print_queue_profiling>( &q, std::chrono::seconds(5), true );
 
         const char *script = "menu_page=\"newgame\";menu_setpage();";
@@ -1453,13 +1456,14 @@ public:
         //ip.exec( script );
     //    Exit();
 
-
+#if 0
         while( !q.is_stopped() ) {
             q.dispatch_pop();
         }
+#endif
     }
 
-    void on_client_frame( msg::ptr<msg::client_frame> m ) {
+    void on_client_frame( msg::ptr<msg::legacy_client_frame> m ) {
         static auto last_rf = std::chrono::high_resolution_clock::now();
         static std::deque<std::chrono::high_resolution_clock::duration> duration_avg;
 
@@ -1487,12 +1491,12 @@ public:
         gc_state->time = now;
 
 
-        if( !false && newest_mouse_event != 0 ) {
-            DD_LOG << "event latency: " << (now - newest_mouse_event) << " - " << (now - oldest_mouse_event) << "\n";
+//        if( !false && newest_mouse_event != 0 ) {
+//            DD_LOG << "event latency: " << (now - newest_mouse_event) << " - " << (now - oldest_mouse_event) << "\n";
 
-            oldest_mouse_event = size_t(-1);
-            newest_mouse_event = 0;
-        }
+//            oldest_mouse_event = size_t(-1);
+//            newest_mouse_event = 0;
+//        }
 
         ms_rfbegin = now;
         //
@@ -1515,11 +1519,11 @@ public:
 
 //         sched_yield();
 
-        q.emplace<msg::swap_buffer>();
+     //   q.emplace<msg::legacy_swap_buffer>();
 
     }
 
-    void on_world_frame(msg::ptr<msg::world_frame> m ) {
+    void on_world_frame(msg::ptr<msg::legacy_world_frame> m ) {
         int now = SYS_GetMsec();
         gc_state->time = now;
 //         DD_LOG << "world frame\n";
@@ -1549,8 +1553,8 @@ public:
     }
 
 
-    void on_key_event( msg::ptr<msg::key_event> m ) {
-        std::cout << "key_event: " << m->event_.sym << "\n";
+    void on_legacy_key_event( msg::ptr<msg::legacy_key_event> m ) {
+        std::cout << "legacy_key_event: " << m->event_.sym << "\n";
 
         bool used = false;
 
@@ -1563,12 +1567,12 @@ public:
             SHI_FireKsym( m->event_ );
         }
     }
-    void on_mouse_event(msg::ptr<msg::mouse_event> m ) {
+    void on_mouse_event(msg::ptr<msg::legacy_mouse_event> m ) {
         md_x += m->md_x_;
         md_y += m->md_y_;
 
-        oldest_mouse_event = std::min( size_t(m->ts_), oldest_mouse_event );
-        newest_mouse_event = std::max( size_t(m->ts_), newest_mouse_event );
+//        oldest_mouse_event = std::min( size_t(m->ts_), oldest_mouse_event );
+//        newest_mouse_event = std::max( size_t(m->ts_), newest_mouse_event );
 
     }
 
@@ -1608,22 +1612,27 @@ public:
     }
 private:
     pan::gl_context &gl_ctx_;
-    mp::queue q;
+    mp::queue &q;
 
     gltex_background_loader gltex_bgl;
     gs::interpreter ip;
     std::auto_ptr<g_res::manager::scope_guard> res_scope;
 
-    size_t oldest_mouse_event;
-    size_t newest_mouse_event;
+    std::chrono::high_resolution_clock::time_point oldest_mouse_event;
+    std::chrono::high_resolution_clock::time_point newest_mouse_event;
 };
 
 
-void GC_MainLoop( pan::gl_context &gl_ctx )
+void GC_MainLoop( /*pan::gl_context &gl_ctx*/ )
 {
-    gc_mainloop mainloop( gl_ctx );
+    gc_mainloop mainloop;//( gl_ctx );
     mainloop();
 
+}
+
+void GC_MakeMainLoop() {
+    gc_mainloop *mainloop = new gc_mainloop;
+    mainloop->operator ()();
 }
 
 void GC_UpdatePmod()

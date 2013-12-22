@@ -1,5 +1,5 @@
 #include <cstring>
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "s_config.h"
 #include "log.h"

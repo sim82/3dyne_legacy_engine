@@ -33,7 +33,7 @@
 
 
 // sys_env.c
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 #if D3DYNE_OS_UNIXLIKE
 	#include <unistd.h>
@@ -52,7 +52,7 @@ int		g_ncmdshow;
 
 static char 	text[128];
 
-
+#if 0
 
 int main( int argc, char *argv[] )
 {
@@ -65,7 +65,7 @@ int main( int argc, char *argv[] )
     return ret;
 }
 
-
+#endif
 
 char *SYS_GetPADir()
 {

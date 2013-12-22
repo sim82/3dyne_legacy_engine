@@ -39,7 +39,7 @@
 #include "l_defs.h"
 #include "l_head.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 planeSlope L_GetPlaneSlope( vec3d_t norm )
 {

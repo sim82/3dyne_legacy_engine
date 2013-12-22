@@ -75,7 +75,7 @@
 #include "g_resourcesdefs.h"
 #include "res_submddefs.h"
 #include "res_movesdefs.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "l_exports.h"
 

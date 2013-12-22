@@ -45,7 +45,7 @@
 #include "db_shape.h"
 #include "shape_db.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 /*
   ==============================
   ShapeDB_Init

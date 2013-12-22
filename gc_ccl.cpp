@@ -45,7 +45,7 @@
 #include "g_console.h"
 #include "sh_parser.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 void GC_ConnectedClientInit( gc_state_t *state, gc_connected_client_t *cc, gc_host_addr_t *host )
 {

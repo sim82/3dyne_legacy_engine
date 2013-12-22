@@ -63,7 +63,7 @@
 // ==============================
 
 #include "l_locals.h"
-#include "shock.h"
+#include "Shared/shock.h"
 #define S_Malloc	li.MM_Malloc
 #define S_Free		li.MM_Free
 #define S_Printf	li.SH_Printf
@@ -77,7 +77,7 @@
 // in sound subsystem
 
 #include "sst_locals.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #define S_Malloc	si.MM_Malloc
 #define S_Free		si.MM_Free

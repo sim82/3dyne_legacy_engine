@@ -44,7 +44,7 @@
 
 #include "db_uoc.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 /*
   ==============================
   UOCDB_Init

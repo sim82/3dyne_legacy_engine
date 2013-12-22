@@ -37,7 +37,7 @@
 #define __MAIN_H_INCLUDED
 #include <math.h>
 
-#include "defs.h"
+//#include "defs.h"
 
 
 #define MM_HEAPSIZE	( 2000000 )
@@ -57,7 +57,7 @@ extern g_state_t	*g_st;
 extern l_export_t	le;
 extern l_import_t	li;
 
-//extern l_export_t	*(*L_GetAPI_ptr)( l_import_t* );
+extern l_export_t	*(*L_GetAPI_ptr)( l_import_t* );
 
 void StartUpGpi();
 void ShutDownGpi();

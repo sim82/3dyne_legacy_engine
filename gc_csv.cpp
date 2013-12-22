@@ -39,7 +39,7 @@
 #include "lib_queue.h"
 #include "g_console.h"
 #include "sh_parser.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 void GC_ConnectedServerInit( gc_state_t *state, gc_connected_server_t *cs, gc_host_addr_t *host )
 {

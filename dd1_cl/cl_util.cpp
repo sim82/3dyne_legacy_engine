@@ -40,7 +40,7 @@
 #include "lib_hobj.h"
 #include "lib_container.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 int Util_AtiCompareKeys( const void *key1, const void *key2 )
 {

@@ -37,6 +37,8 @@
 #ifndef ib_defs_h
 #define ib_defs_h
 
+#include "Ortho/ibase.h"
+
 #define SOURCE_SAR	( 0 )
 #define SOURCE_DISK	( 1 )
 #define SOURCE_MEH   ( 2 )
@@ -77,6 +79,7 @@ typedef ib_file_t ibfile_t;
 #else
 namespace ibase {
     class file;
+    class file_handle;
 };
 
 typedef struct {

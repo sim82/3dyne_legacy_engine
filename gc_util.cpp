@@ -39,7 +39,7 @@
 #include <string.h>
 
 #include "gc_defs.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 /*
   ==============================

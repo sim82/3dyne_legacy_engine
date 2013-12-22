@@ -37,7 +37,7 @@
 #ifndef gc_defs_h
 #define gc_defs_h
 
-#include "u_defs.h"
+#include "shared/u_defs.h"
 #include "g_defs.h"		// g_map_t
 #include "g_defs2.h"		// g_server_t, g_client_t 
 
@@ -229,7 +229,7 @@ typedef enum
 	gcUdpState_is_init,
 	gcUdpState_num
 } gcUdpState;
-
+#if 1
 typedef struct gc_state_s
 {
 	//
@@ -313,7 +313,7 @@ typedef struct gc_state_s
 	fp_t		i_strafespeed;
 
 } gc_state_t;
-
+#endif
 #endif
 
 #endif

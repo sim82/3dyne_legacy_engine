@@ -17,7 +17,7 @@
 
 #include <cassert>
 #include <stdexcept>
-#include "pan.h"
+#include "Ortho/pan.h"
 // #include "scene_bits.h"
 
 

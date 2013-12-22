@@ -46,7 +46,7 @@
 #include "cl_state.h"
 #include "cl_head.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
 
 /*
   ==============================

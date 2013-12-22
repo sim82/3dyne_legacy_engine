@@ -41,7 +41,7 @@
   =============================================================================
 */
 #include <string.h>
-#include "shock.h"
+#include "Shared/shock.h"
 #include "r_frustum.h"
 
 /*

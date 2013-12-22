@@ -45,7 +45,7 @@
 #include <boost/intrusive/list.hpp>
 
 #include "g_resourcesdefs.h"
-#include "shock.h"
+#include "Shared/shock.h"
 //#include "g_message_passing.h"
 // class res_gltex_register_t;
 // struct res_sound_register_t;

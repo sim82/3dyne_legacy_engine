@@ -30,7 +30,7 @@
  *     Simon Berger (simberger@gmail.com) - initial API and implementation
  */
 
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 // main.c
 #include <stdio.h> 
@@ -45,14 +45,14 @@
 #define RENDER "./r_glide2x.so"
 
 #include "version.h"
-#include "log.h"
-#include "message_passing.h"
-#include "pan.h"
+#include "Shared/log.h"
+#include "Ortho/message_passing.h"
+#include "Ortho/pan.h"
 #include "game_shell.h"
 #include "sh_alias.h"
 #include "r_private.h"
-#include "message_passing.h"
-
+#include "Ortho/message_passing.h"
+#include "Shared/dep_inject.h"
 #if DD_USE_DLT
 #include "dlt.h"
 #endif
@@ -441,6 +441,11 @@ int g_main( int argc, char* argv[] )
 	TFUNC_ENTER;
 	Greetings();
 
+    //ibase::service ib_service;
+    ibase::service::set_singleton( dep_inject::get_registry().get<ibase::service>("g_ibase").get() );
+
+  //  dep_inject::registry::guard<ibase::service> ib_guard(dep_inject::get_registry(), "g_ibase", ib_service);
+
 	StartUpBasic();
 	signal( SIGSEGV, (void(*) (int)) SecureShutDown );
 //	signal( SIGABRT, (void(*) (int)) SecureShutDown );
@@ -454,7 +459,7 @@ int g_main( int argc, char* argv[] )
 	//SetUnhandledExceptionFilter( win32Exception );
 #endif
 
-	SOS_SetShockHandler( ShockHandler );
+    //SOS_SetShockHandler( ShockHandler );
 
 
 	//
@@ -467,8 +472,6 @@ int g_main( int argc, char* argv[] )
 	strcpy( padir, SYS_GetPADir() );
 //	IB_AddSource( text, SOURCE_DISK );
 
-    ibase::service ib_service;
-    ibase::service::set_singleton( &ib_service );
 
 
 
@@ -626,18 +629,23 @@ int g_main( int argc, char* argv[] )
 //    R_StartUp( q );
 
 
-    pan::gl_context gl_ctx;
+//    pan::gl_context gl_ctx;
     {
         r_devicewidth = SHP_GetVar ( "r_devicewidth" );
         r_deviceheight = SHP_GetVar ( "r_deviceheight" );
-        auto r_fullscreen = SHP_GetVar ( "r_fullscreen" );
 
-        pan::gl_context::config cfg;
+        auto gl_ctx = dep_inject::get_registry().get<pan::gl_context>( "g_gl_context" );
 
-        cfg.width_ = r_devicewidth->ivalue;
-        cfg.height_ = r_deviceheight->ivalue;
+        r_devicewidth->ivalue = gl_ctx->get_config().width_;
+        r_deviceheight->ivalue = gl_ctx->get_config().height_;
+//        auto r_fullscreen = SHP_GetVar ( "r_fullscreen" );
 
-        gl_ctx.set_config(cfg);
+//        pan::gl_context::config cfg;
+
+//        cfg.width_ = r_devicewidth->ivalue;
+//        cfg.height_ = r_deviceheight->ivalue;
+
+//        gl_ctx.set_config(cfg);
 
         r_glinfo = ( gl_info_t * ) MM_Malloc ( sizeof ( gl_info_t ) );
         r_glinfo->arb_multitexture = 1;
@@ -711,8 +719,8 @@ int g_main( int argc, char* argv[] )
 
     DD_LOG << "test log\n";
 //    __error("");
-    GC_MainLoop( gl_ctx );
-    SaveConfig();
+    GC_MakeMainLoop( /*gl_ctx*/ );
+    //SaveConfig();
 	TFUNC_LEAVE;
     return 0;
 }

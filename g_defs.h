@@ -39,13 +39,13 @@
 #ifndef g_defs_h
 #define g_defs_h
 
-#include "u_defs.h"
+#include "shared/u_defs.h"
 #include "u_expand.h"
-#include "lib_modeldefs.h"
-#include "imgcache_defs.h"
-#include "shader_defs.h"
-#include "lib_hmanagerdefs.h"
-#include "g_bmdefs.h"
+#include "shared/lib_modeldefs.h"
+#include "r_gen_gl/imgcache_defs.h"
+#include "r_gen_gl/shader_defs.h"
+#include "shared/lib_hmanagerdefs.h"
+#include "shared/g_bmdefs.h"
 #include "db_lightmapdefs.h"
 #include "db_shapedefs.h"
 #include "db_uocdefs.h"

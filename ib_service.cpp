@@ -42,12 +42,16 @@
 #include <sstream>
 #include <algorithm>
 
-#include "minimal_external_hash.h"
+#include "Ortho/minimal_external_hash.h"
 
-#include "shock.h"
+#include "Shared/shock.h"
+
+
 #include "ib_service.h"
-
+#include "Shared/log.h"
 static ibase::service *g_service = 0;
+#if 0
+
 
 namespace ibase {
     
@@ -508,7 +512,7 @@ service::~service() {
 
 
 }
-
+#endif
 
 // legacy interface
 // funny ansi-c fact: the wrapper boilerplate code is longer than the actual c++ implementation. 
@@ -523,7 +527,7 @@ void IB_StartUp() {
         __error( "g_service != 0\n" );
     }
     
-  //  g_service = new ibase::service();
+    g_service = &ibase::service::get_singleton();
 }
 
 
@@ -541,7 +545,27 @@ void IB_AddSource( const char *path, int stype ) {
         __error( "g_service == 0\n" );
     }
     __named_message( "add source: %s\n", path );
-    g_service->add_source(path, stype);
+
+
+    ibase::source_type new_stype;
+    switch( stype ) {
+
+
+    case SOURCE_MEH:
+        new_stype = ibase::source_type::meh;
+        break;
+
+    case SOURCE_SAR:
+        DD_LOG << "SAR not supported\n";
+        return;
+
+    default:
+    case SOURCE_DISK:
+        new_stype = ibase::source_type::dir;
+        break;
+    }
+
+    g_service->add_source(path, new_stype );
 }
 
 
@@ -564,16 +588,14 @@ ib_file_t *IB_Open( const char *name ) {
 }
 
 ib_file_t *IB_OpenDiskFile( const char *name ) {
-    std::auto_ptr<ibase::impl_iso_fstream::file> f( new ibase::impl_iso_fstream::file( name ));
-    
-    
-    if( f->is_open() ) {
-        ib_file_t *wrap_f = new ib_file_t;
-        wrap_f->f_ = f.release();
-        return wrap_f;
-    } else {
-        return 0;
+    if( g_service == 0 ) {
+        __error( "g_service == 0\n" );
     }
+
+    std::unique_ptr<ibase::file> f(g_service->open_disk_file( name ));
+    ib_file_t *wrap_f = new ib_file_t;
+    wrap_f->f_ = f.release();
+    return wrap_f;
 }
 
 

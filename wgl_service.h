@@ -53,7 +53,7 @@ GLAPI HGLRC (*_wglCreateContext) ( HDC );
 GLAPI BOOL (*_wglMakeCurrent) ( HDC, HGLRC );
 GLAPI BOOL (*_wglDeleteContext ) ( HGLRC );
 #else
-#include <gl/GL.h>
+#include "Ortho/OpenGL.h"
 #define _wglCreateContext	wglCreateContext
 #define _wglMakeCurrent		wglMakeCurrent
 #define _wglDeleteContext	wglDeleteContext

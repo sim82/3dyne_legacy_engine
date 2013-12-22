@@ -41,7 +41,7 @@
 #include "lib_math.h"
 #include "g_shared.h"
 #include "ca_service.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "layer_defs.h"
 #include "layer_instance.h"

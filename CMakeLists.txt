@@ -31,8 +31,8 @@
 #-------------------------------------------------------------------------------
 cmake_minimum_required( VERSION 2.8 )
 
-add_subdirectory( dd1_cl )
-add_subdirectory( dd1_sv )
+#add_subdirectory( dd1_cl )
+#add_subdirectory( dd1_sv )
 
 set( USE_DLT 0 )
 
@@ -78,7 +78,7 @@ if(WIN32)
 else()
 
   add_definitions( -DGL_LINKED -D__USE_IBASE -DS_INGAME -DBHOSTSYSTEM="linux.i386")
-  set( CMAKE_CXX_FLAGS "-Wall -std=c++11 -fsanitize=address" )
+  set( CMAKE_CXX_FLAGS "-Wall -std=c++11" )
   #set( CMAKE_CXX_FLAGS "-Wall -std=c++11" )
 #   set( SS_SRC r_glx.cpp i_x11.cpp glx_service.cpp )
   set( SS_SRC r_pan )
@@ -87,6 +87,7 @@ endif()
 
 
 # set( CMAKE_C_COMPILER g++ )
+include_directories( .. )
 include_directories( shared . r_fake r_gen_gl)
 INCLUDE_DIRECTORIES( /usr/include/openjpeg-1.5/ )
 
@@ -99,7 +100,6 @@ INCLUDE_DIRECTORIES( /usr/include/openjpeg-1.5/ )
 
 
 set( ENGINE_SRC 
-    shared/log.cpp
     g_main.cpp
 	la_service.cpp
 	la_varviews.cpp
@@ -130,7 +130,7 @@ set( ENGINE_SRC
 	sst_sdl.cpp
 	ca_service.cpp
 	ib_service.cpp
-	shared/shock.cpp
+        #shared/shock.cpp
 	sys_time.cpp
 	sys_console.cpp
 	l_api.cpp
@@ -174,8 +174,8 @@ set( ENGINE_SRC
 	l_wrap.cpp
 	baked_hobj.cpp
 	g_message_passing.cpp
-	message_passing.cpp
-	pan.cpp
+#	message_passing.cpp
+#	pan.cpp
         game_shell.cpp
         gl_bits.cpp
 	)
@@ -236,7 +236,8 @@ set( R_GEN_GL_SRC r_gen_gl/r_real.cpp
 	)
 
 
-add_executable( dd ${ENGINE_SRC} ${R_FAKE_SRC} ${R_GEN_GL_SRC} ${SS_SRC} ${ALL_HEADERS} )
+#add_executable( dd ${ENGINE_SRC} ${R_FAKE_SRC} ${R_GEN_GL_SRC} ${SS_SRC} ${ALL_HEADERS} )
+add_library( 3dyne_legacy_engine SHARED ${ENGINE_SRC} ${R_FAKE_SRC} ${R_GEN_GL_SRC} ${SS_SRC} ${ALL_HEADERS} )
 #target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xext pthread jpeg SDL bz2 )
 add_executable( disk_hash disk_hash.cpp )
 
@@ -250,5 +251,5 @@ if(WIN32)
   target_link_libraries( dd jpeg bz2 ws2_32 opengl32  SDL winmm )
 else()
 
-  target_link_libraries( dd dl m X11  Xxf86dga Xxf86vm Xrandr Xext Xi pthread jpeg SDL bz2 GL GLEW )
+  target_link_libraries( 3dyne_legacy_engine dl m X11  Xxf86dga Xxf86vm Xrandr Xext Xi pthread jpeg SDL bz2 GL GLEW )
 endif()

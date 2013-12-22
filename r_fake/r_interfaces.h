@@ -44,7 +44,7 @@
 //#include <sys/time.h>
 //#include <unistd.h>
 
-#include "shock.h"                                                                                
+#include "Shared/shock.h"                                                                                
 #include "u_token.h"
 #include "lib_math.h"
 #include "u_hobj.h"

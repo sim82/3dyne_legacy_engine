@@ -146,7 +146,7 @@ void WriteClassWithoutRoot( hobj_t *self, FILE *h )
 // this version uses a tmp buffer
 // 
 
-hobj_t* ReadClassRecursive( tokenstream_t *ts )
+hobj_t* ReadClassRecursive( legacy::tokenstream_t *ts )
 {
 	char		type[HOBJ_TYPE_SIZE];
 	char		name[HOBJ_NAME_SIZE];
@@ -283,7 +283,7 @@ hobj_t* ReadClassRecursive( tokenstream_t *ts )
 	return self;
 }
 
-hobj_t* ReadClass( tokenstream_t *ts )
+hobj_t* ReadClass( legacy::tokenstream_t *ts )
 {
 	hobj_t	*root;
 

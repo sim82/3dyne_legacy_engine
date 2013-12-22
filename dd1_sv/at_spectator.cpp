@@ -43,7 +43,7 @@
 
 #include "s_mem.h"
 #include "lib_hobj.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "events.h"
 

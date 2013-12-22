@@ -33,42 +33,48 @@
 
 #ifndef __g_message_passing_h
 #define __g_message_passing_h
-#include <GL/gl.h>
-#include "message_passing.h"
-#include "i_defs.h"
+#include "Ortho/pan.h"
+#include "Ortho/message_passing.h"
+#include "System/i_defs.h"
 #include <tuple>
 #include <memory>
 
 class mipmap_cache;
 
 namespace msg {
-class key_event : public base {
-public:
-    key_event( const keyevent_t &event ) : event_(event) {}    
-    keyevent_t event_;
-};
+//class key_event : public base {
+//public:
+//    key_event( const keyevent_t &event ) : event_(event) {}
+//    keyevent_t event_;
+//};
     
-class mouse_event : public base {
-public:
-    mouse_event( int md_x, int md_y, int ts ) : md_x_(md_x), md_y_(md_y), ts_(ts) {}
+//class mouse_event : public base {
+//public:
+//    mouse_event( int md_x, int md_y, int ts ) : md_x_(md_x), md_y_(md_y), ts_(ts) {}
     
-    int md_x_;
-    int md_y_;
+//    int md_x_;
+//    int md_y_;
     
-    int ts_;
+//    int ts_;
     
-};
+//};
 
 class gc_quit : public base {};
 class gc_start_single : public base {};
 class gc_drop_game : public base {};
 class gc_start_demo : public base {};
 
-class world_frame : public base {};
+class legacy_world_frame : public base {};
 
-class client_frame : public base {};
-class swap_buffer : public base {};
+class legacy_client_frame : public base {};
+class legacy_swap_buffer : public base {};
 class print_queue_profiling : public base {};
+
+class legacy_key_event : public key_event {
+public:
+    legacy_key_event( const key_event &other ) : key_event(other) {}
+};
+class legacy_mouse_event : public mouse_event {};
 
 class menu_setpage : public base {};
 class game_shell_execute : public base {

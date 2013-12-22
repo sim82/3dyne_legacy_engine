@@ -38,7 +38,7 @@
 
 #ifndef sys_interfaces_h
 #define sys_interfaces_h
-#include "compiler_config.h"
+#include "Tigris/compiler_config.h"
 
 #include <stdio.h>
 #include <stdlib.h>

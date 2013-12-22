@@ -41,7 +41,7 @@
 #include "lib_math.h"
 #include "lib_bezier.h"
 #include "lib_container.h"
-#include "shock.h"
+#include "Shared/shock.h"
 
 #include "r_glbackenddefs.h"
 #include "shape_defs.h"
