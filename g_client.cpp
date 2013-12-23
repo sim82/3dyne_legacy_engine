@@ -44,6 +44,7 @@
 #include "interfaces.h"
 
 #include "events.h"
+#include "Shared/dep_inject.h"
 
 // hack:
 #include "l_wrap.h"
@@ -226,9 +227,14 @@ void G_ClientRunFrame( g_client_t *cl )
 	cl->di_rect_num = 0;
 	cl->di_text_num = 0;
 
-	cl->ri_view_player = NULL;
-	cl->ri_view_spectator = NULL;
-	cl->ri_view_sky = NULL;
+
+    dep_inject::get_registry().remove_no_check<ri_view_t>("legacy_ri_vplayer");
+    dep_inject::get_registry().remove_no_check<ri_view_t>("legacy_ri_vspectator");
+    dep_inject::get_registry().remove_no_check<ri_view_t>("legacy_ri_vsky");
+
+//	cl->ri_view_player = NULL;
+//	cl->ri_view_spectator = NULL;
+//	cl->ri_view_sky = NULL;
 
 //	le.L_RunFrame();
 

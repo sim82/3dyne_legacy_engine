@@ -105,7 +105,7 @@ typedef enum
 	gMapState_num
 } gMapState;
 
-typedef struct g_map_s 
+struct g_map_t
 {
 	gMapState		state;
 
@@ -135,7 +135,7 @@ typedef struct g_map_s
 	hmanager_t		*multilayerhm;
 
 	unsigned char		*glmesh;
-} g_map_t;
+};
 
 typedef struct g_life_s
 {

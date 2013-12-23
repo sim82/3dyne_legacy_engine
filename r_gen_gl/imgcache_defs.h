@@ -37,9 +37,9 @@
 #ifndef __imgcache_defs
 #define __imgcache_defs
 
-#include "shared/lib_containerdefs.h"
-#include "shared/lib_math.h"
-#include <gl_defs.h>
+#include "../shared/lib_containerdefs.h"
+#include "../shared/lib_math.h"
+#include "../gl_defs.h"
 
 // IC_... internal types
 

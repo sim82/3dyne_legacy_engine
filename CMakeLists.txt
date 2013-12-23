@@ -100,6 +100,7 @@ INCLUDE_DIRECTORIES( /usr/include/openjpeg-1.5/ )
 
 
 set( ENGINE_SRC 
+    light_game_control.cpp
     g_main.cpp
 	la_service.cpp
 	la_varviews.cpp
@@ -178,6 +179,7 @@ set( ENGINE_SRC
 #	pan.cpp
         game_shell.cpp
         gl_bits.cpp
+
 	)
 
 set( R_FAKE_SRC r_fake/g_blockmap.cpp

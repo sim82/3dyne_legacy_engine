@@ -1442,9 +1442,9 @@ public:
         //q.emplace<msg::swap_buffer>();
 
 
-        q.emplace<msg::gc_start_demo>();
+//        q.emplace<msg::gc_start_demo>();
 
-        q.emplace<msg::legacy_client_frame>();
+//        q.emplace<msg::legacy_client_frame>();
 
         mp::timer_source timer;
 
@@ -2016,17 +2016,22 @@ void GC_DoRFDraw()
 	// set render_origin from ipo
 	if ( gc_state->gc_in_game )
 	{
-		ri_view_t	*ri_vplayer;
-		ri_view_t	*ri_vspectator;
-		ri_view_t	*ri_vsky;
+//		ri_view_t	*ri_vplayer;
+//		ri_view_t	*ri_vspectator;
+//		ri_view_t	*ri_vsky;
 
 		matrix3_t		render_matrix;
 
 		static sh_var_t	*var_drawtris = NULL;
 
-		ri_vplayer = gc_state->cl.ri_view_player;
-		ri_vspectator = gc_state->cl.ri_view_spectator;
-		ri_vsky = gc_state->cl.ri_view_sky;
+//		ri_vplayer = gc_state->cl.ri_view_player;
+//		ri_vspectator = gc_state->cl.ri_view_spectator;
+//		ri_vsky = gc_state->cl.ri_view_sky;
+
+        auto ri_vplayer = dep_inject::get_registry().get<ri_view_t>("legacy_ri_vplayer");
+        auto ri_vspectator = dep_inject::get_registry().get<ri_view_t>("legacy_ri_vspectator");
+        auto ri_vsky = dep_inject::get_registry().get<ri_view_t>("legacy_ri_vsky");
+
 
 		//
 		// if we only draw lines, the color buffer have to be cleared

@@ -186,13 +186,14 @@ typedef struct g_client_s
 
 	di_rect_t	*di_rects[G_CLIENT_MAX_DI_RECTS];
 	di_text_t	*di_texts[G_CLIENT_MAX_DI_TEXTS];
-
+#if 0
+    // currently replaced by dep_inject
 	// render views
 	ri_view_t	*ri_view_player;
 	ri_view_t	*ri_view_spectator;
 	ri_view_t	*ri_view_sky;
+#endif
 #if 0
-	
 	// dlights registered for world frame by GI_RegisterDLightForWF
 	int		wf_dlight_num;
 	wf_dlight_info_t	*wf_dlights[G_CLIENT_MAX_DLIGHTS];

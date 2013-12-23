@@ -84,92 +84,92 @@ class gl_context;
 }
 
 
-namespace legacy {
-class game_control {
-private:
-    //
-    // machine state
-    //
-    gcState			state;
-    msec_t			time;
-    msec_t			timeout;
-    void (*timeout_func)(struct gc_state_s *);
+//namespace legacy {
+//class game_control {
+//private:
+//    //
+//    // machine state
+//    //
+//    gcState			state;
+//    msec_t			time;
+//    msec_t			timeout;
+//    void (*timeout_func)(struct gc_state_s *);
 
-    unique_t		id_first;
-    unique_t		id_last;
-    unique_t		id_next;
+//    unique_t		id_first;
+//    unique_t		id_last;
+//    unique_t		id_next;
 
-    // async state changes
-    bool_t		u_start_demo;	// init game for demo
-    bool_t		u_start_single;	// init game for singel player
-    bool_t		u_connect_public_server;	// init game as network client
-    bool_t		u_connect_failed;
-    bool_t		u_start_public_server;		// init game as network server
+//    // async state changes
+//    bool_t		u_start_demo;	// init game for demo
+//    bool_t		u_start_single;	// init game for singel player
+//    bool_t		u_connect_public_server;	// init game as network client
+//    bool_t		u_connect_failed;
+//    bool_t		u_start_public_server;		// init game as network server
 
-    bool_t		u_start_game;	// start game
-    bool_t		u_drop_game;	// stop game
-    bool_t		u_quit;
+//    bool_t		u_start_game;	// start game
+//    bool_t		u_drop_game;	// stop game
+//    bool_t		u_quit;
 
-    // current state
-    bool_t		gc_is_demo;
-    bool_t		gc_is_single;
-    bool_t		gc_has_server_connection;
-    bool_t		gc_is_public_server;
-    bool_t		gc_is_loading;
-    bool_t		gc_in_game;
+//    // current state
+//    bool_t		gc_is_demo;
+//    bool_t		gc_is_single;
+//    bool_t		gc_has_server_connection;
+//    bool_t		gc_is_public_server;
+//    bool_t		gc_is_loading;
+//    bool_t		gc_in_game;
 
-    // local port
-    gcUdpState		udp_state;
-    byte_iter_t		udp_send_bi;
-    byte_iter_t		udp_recv_bi;
-    char			udp_send_buf[GC_MAX_NET_UDP_SIZE];
-    char			udp_recv_buf[GC_MAX_NET_UDP_SIZE];
+//    // local port
+//    gcUdpState		udp_state;
+//    byte_iter_t		udp_send_bi;
+//    byte_iter_t		udp_recv_bi;
+//    char			udp_send_buf[GC_MAX_NET_UDP_SIZE];
+//    char			udp_recv_buf[GC_MAX_NET_UDP_SIZE];
 
-    int			local_sock;
-    struct sockaddr_in	local_port;
+//    int			local_sock;
+//    struct sockaddr_in	local_port;
 
-    struct sockaddr_in	addr_last_recv;
-    gc_host_addr_t		host_last_recv;
+//    struct sockaddr_in	addr_last_recv;
+//    gc_host_addr_t		host_last_recv;
 
-    // connected hosts
+//    // connected hosts
 
-    gc_connected_client_t	connected_cl_tbl[GC_STATE_MAX_CONNECTED_CLIENTS];
+//    gc_connected_client_t	connected_cl_tbl[GC_STATE_MAX_CONNECTED_CLIENTS];
 
-    gc_connected_server_t	connected_sv;
+//    gc_connected_server_t	connected_sv;
 
-    // the game map
-    g_map_t			map;
+//    // the game map
+//    g_map_t			map;
 
-    // the game/physic server
-    g_server_t		sv;
+//    // the game/physic server
+//    g_server_t		sv;
 
-    // the local game/visualization client
-    g_client_t		cl;
+//    // the local game/visualization client
+//    g_client_t		cl;
 
-    //
-    unique_t		id_bind_input;
-    unique_t		id_bind_view;
+//    //
+//    unique_t		id_bind_input;
+//    unique_t		id_bind_view;
 
-    // event queues and their buffers
-    byte_iter_t		bi_server;		// queue for input => server
-    byte_iter_t		bi_client;
-    byte_iter_t		bi_render;		// queue for client=> render
+//    // event queues and their buffers
+//    byte_iter_t		bi_server;		// queue for input => server
+//    byte_iter_t		bi_client;
+//    byte_iter_t		bi_render;		// queue for client=> render
 
-    char			buf_server[GC_BUFFER_SIZE_SERVER];
-    char			buf_client[GC_BUFFER_SIZE_CLIENT];
-    char			buf_render[GC_BUFFER_SIZE_RENDER];
+//    char			buf_server[GC_BUFFER_SIZE_SERVER];
+//    char			buf_client[GC_BUFFER_SIZE_CLIENT];
+//    char			buf_render[GC_BUFFER_SIZE_RENDER];
 
-    // from input
-    fp_t		i_lat, i_lon;
-    bool_t		i_use;
-    bool_t		i_jump;
-    bool_t		i_shoot;
-    fp_t		i_speed;
-    fp_t		i_strafespeed;
-};
+//    // from input
+//    fp_t		i_lat, i_lon;
+//    bool_t		i_use;
+//    bool_t		i_jump;
+//    bool_t		i_shoot;
+//    fp_t		i_speed;
+//    fp_t		i_strafespeed;
+//};
 
 
-}
+//}
 
 void GC_MainLoop();
 void GC_MakeMainLoop();

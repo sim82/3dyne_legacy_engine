@@ -38,10 +38,10 @@
 #define __shape_defs
 
 
-#include "lib_math.h"
-#include "lib_hobjdefs.h"
-#include "lib_containerdefs.h"
-#include "lib_uocdefs.h"
+#include "shared/lib_math.h"
+#include "shared/lib_hobjdefs.h"
+#include "shared/lib_containerdefs.h"
+#include "shared/lib_uocdefs.h"
 
 #include "dlight_defs.h"
 

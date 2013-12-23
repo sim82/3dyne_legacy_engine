@@ -42,7 +42,7 @@
 #include "db_lightmap.h"
 #include "layer_defs.h"
 #include "shape_defs.h"
-
+#include "Shared/dep_inject.h"
 extern g_resources_t	*g_rs;	// fixme
 extern g_state_t	*g_st;
 extern int		gc_localworldframe;
@@ -407,17 +407,21 @@ void GI_RenderAddView( ri_view_t *ri )
 			// that's a hack that tells the object not to draw models and sprites
 			ri->take_view = true;	// tell client that this view was rendered
 
-			gc_state->cl.ri_view_player = ri;
+//			gc_state->cl.ri_view_player = ri;
+
+            dep_inject::get_registry().add<ri_view_t>("legacy_ri_vplayer", *ri);
 		}
 	}
 	if ( ri->style == viewStyle_spectator )
 	{
-		gc_state->cl.ri_view_spectator = ri;	
+//        gc_state->cl.ri_view_spectator = ri;
+        dep_inject::get_registry().add<ri_view_t>("legacy_ri_vspectator", *ri);
 	}
 	
 	if ( ri->style == viewStyle_sky )
 	{
-		gc_state->cl.ri_view_sky = ri;
+//		gc_state->cl.ri_view_sky = ri;
+        dep_inject::get_registry().add<ri_view_t>("legacy_ri_vsky", *ri);
 	}
 }
 
