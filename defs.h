@@ -37,7 +37,7 @@
 // include all *def headers
 #ifndef __defs_h
 #define __defs_h
-#include "Tigris/compiler_config.h"
+#include "Shared/compiler_config.h"
 #include "shared/a_shared.h"
 
 #include "sys_defs.h"
@@ -47,7 +47,7 @@
 //#include "ib_defs_new.h"
 #include "sh_defs.h"
 #include "snd_defs.h"
-#include "System/i_defs.h"
+#include "Shared/legacy_System/i_defs.h"
 #include "r_defs.h"
 #include "gc_defs.h"
 #include "u_defs.h"

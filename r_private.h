@@ -39,7 +39,7 @@
 #define r_private_h
 
 
-#include "Tigris/compiler_config.h"
+#include "Shared/compiler_config.h"
 #include "defs.h"
 #include "gl_defs.h"
 

@@ -37,7 +37,7 @@
 #ifndef gl_defs_h
 #define gl_defs_h
 
-#include "Tigris/compiler_config.h"
+#include "Shared/compiler_config.h"
 
 typedef struct {
 	char	*extstring;	// complete extension string

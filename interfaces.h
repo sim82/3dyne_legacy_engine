@@ -38,7 +38,7 @@
 
 #ifndef __interfaces
 #define __interfaces
-#include "Tigris/compiler_config.h"
+#include "Shared/compiler_config.h"
 
 #include "s_config.h"
 #include "s_mem.h"

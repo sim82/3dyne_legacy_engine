@@ -40,7 +40,7 @@
 #define sys_defs_h
 
 #include <stdio.h> // FILE* not for interfaces!
-#include "Tigris/compiler_config.h"
+#include "Shared/compiler_config.h"
 
 #if !defined __GNUC__
 #define __inline__

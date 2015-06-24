@@ -38,7 +38,7 @@
 
 #ifndef sh_defs_h
 #define sh_defs_h
-#include "System/i_defs.h"
+#include "Shared/legacy_System/i_defs.h"
 
 // sh_deamon.c
 
@@ -96,7 +96,7 @@ typedef struct {
 } sh_command_t;
 
 // bad situation: function definition inside a defs file
-#include "System/i_defs.h"
+#include "Shared/legacy_System/i_defs.h"
 
 
 typedef struct sh_widget_s {

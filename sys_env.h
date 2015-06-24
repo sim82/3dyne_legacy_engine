@@ -38,7 +38,7 @@
 
 #ifndef sys_env_h
 #define sys_env_h
-#include "Tigris/compiler_config.h"
+#include "Shared/compiler_config.h"
 
 
 // create and return private Tgfkaa directory

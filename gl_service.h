@@ -37,7 +37,7 @@
 
 #ifndef gl_service_h
 #define gl_service_h
-#include "Tigris/compiler_config.h"
+#include "Shared/compiler_config.h"
 
 #include "gl_defs.h"
 
